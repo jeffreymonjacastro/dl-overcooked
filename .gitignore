@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+
+# Virtual environments and local package state
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# uv / packaging
+.uv-cache/
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Tests, coverage, and type checkers
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# Logs and local run outputs
+*.log
+logs/
+outputs/
+runs/
+results/
+
+# RL / ML experiment artifacts
+wandb/
+mlruns/
+tensorboard/
+lightning_logs/
+checkpoints/
+models/
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.h5
+
+# Large external datasets
+data/micahcarroll/
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

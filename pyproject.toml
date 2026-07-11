@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = "==3.10.*"
 dependencies = [
     "overcooked-ai>=1.1.0",
-    "numpy<2",
+    "numpy<1.24",
     "PyYAML>=6.0",
     "Pillow>=10.0",
     "imageio>=2.31",
@@ -15,3 +15,8 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+]

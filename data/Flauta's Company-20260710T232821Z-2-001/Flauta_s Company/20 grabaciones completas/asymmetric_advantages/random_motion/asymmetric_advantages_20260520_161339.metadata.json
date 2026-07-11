@@ -1,0 +1,349 @@
+{
+  "format_version": "overcooked_demonstrations_v2",
+  "created_at_utc": "2026-05-20T21:13:39.576797+00:00",
+  "dataset_type": "human_or_policy_demonstrations_for_imitation_learning",
+  "mode": "collect_demonstrations",
+  "seed": 67,
+  "environment": {
+    "layout_name": "asymmetric_advantages",
+    "layout_file": null,
+    "horizon": 250,
+    "old_dynamics": true
+  },
+  "layout": {
+    "layout_name": "asymmetric_advantages",
+    "layout_file": null,
+    "horizon": 250,
+    "old_dynamics": true,
+    "width": 9,
+    "height": 5,
+    "grid_rows": [
+      "XXXXXXXXX",
+      "O XSXOX S",
+      "X   P   X",
+      "X   P   X",
+      "XXXDXDXXX"
+    ],
+    "grid_string": "XXXXXXXXX\nO XSXOX S\nX   P   X\nX   P   X\nXXXDXDXXX",
+    "terrain_pos_dict": {
+      "X": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          4,
+          0
+        ],
+        [
+          5,
+          0
+        ],
+        [
+          6,
+          0
+        ],
+        [
+          7,
+          0
+        ],
+        [
+          8,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          6,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          8,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          8,
+          3
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          6,
+          4
+        ],
+        [
+          7,
+          4
+        ],
+        [
+          8,
+          4
+        ]
+      ],
+      "O": [
+        [
+          0,
+          1
+        ],
+        [
+          5,
+          1
+        ]
+      ],
+      " ": [
+        [
+          1,
+          1
+        ],
+        [
+          7,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          6,
+          2
+        ],
+        [
+          7,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          6,
+          3
+        ],
+        [
+          7,
+          3
+        ]
+      ],
+      "S": [
+        [
+          3,
+          1
+        ],
+        [
+          8,
+          1
+        ]
+      ],
+      "P": [
+        [
+          4,
+          2
+        ],
+        [
+          4,
+          3
+        ]
+      ],
+      "D": [
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          4
+        ]
+      ],
+      "T": []
+    },
+    "start_player_positions": [
+      [
+        6,
+        2
+      ],
+      [
+        1,
+        3
+      ]
+    ],
+    "start_order_list": null,
+    "rew_shaping_params": null,
+    "custom_layout_dict": null
+  },
+  "observation": {
+    "config": {
+      "type": "featurized",
+      "include_agent_index": true
+    },
+    "type": "featurized",
+    "include_agent_index": true,
+    "note": "Each record stores obs and, when enabled, next_obs as produced by ObservationBuilder."
+  },
+  "actions": {
+    "convention": "0=north/up, 1=south/down, 2=east/right, 3=west/left, 4=stay, 5=interact",
+    "index_to_action_repr": {
+      "0": "north",
+      "1": "south",
+      "2": "east",
+      "3": "west",
+      "4": "stay",
+      "5": "interact"
+    },
+    "action_repr_to_index": {
+      "(0, -1)": 0,
+      "(0, 1)": 1,
+      "(1, 0)": 2,
+      "(-1, 0)": 3,
+      "(0, 0)": 4,
+      "'interact'": 5
+    }
+  },
+  "policies": {
+    "agent_0": {
+      "type": "builtin",
+      "name": "random_motion",
+      "ingredient": "onion",
+      "avoid_teammate": true,
+      "random_action_prob": 0.0,
+      "max_action_time_ms": 100,
+      "invalid_action": "stay",
+      "timeout_action": "stay"
+    },
+    "agent_1": {
+      "type": "builtin",
+      "name": "human_keyboard",
+      "max_action_time_ms": 0,
+      "invalid_action": "stay",
+      "timeout_action": "stay",
+      "keymap": {
+        "up": [
+          "up",
+          "w"
+        ],
+        "down": [
+          "down",
+          "s"
+        ],
+        "left": [
+          "left",
+          "a"
+        ],
+        "right": [
+          "right",
+          "d"
+        ],
+        "interact": [
+          "space",
+          "e",
+          "return"
+        ]
+      },
+      "priority": [
+        "interact",
+        "up",
+        "down",
+        "left",
+        "right",
+        "stay"
+      ]
+    }
+  },
+  "execution": {
+    "config": {
+      "num_episodes": 1,
+      "episode_seeds": [
+        67
+      ],
+      "swap_agent_positions": false
+    },
+    "num_episodes": 1,
+    "episode_seeds": [
+      67
+    ],
+    "role_swaps": [
+      false
+    ]
+  },
+  "data_collection": {
+    "enabled": true,
+    "record_agent_indices": [
+      1
+    ],
+    "include_next_obs": true,
+    "include_info": false,
+    "output_path": null,
+    "npz_path": null,
+    "metadata_json_path": null
+  },
+  "files": {
+    "pickle_path": "data\\demonstrations\\asymmetric_advantages\\random_motion\\asymmetric_advantages_20260520_161339.pkl",
+    "npz_path": "data\\demonstrations\\asymmetric_advantages\\random_motion\\asymmetric_advantages_20260520_161339.npz",
+    "metadata_json_path": "data\\demonstrations\\asymmetric_advantages\\random_motion\\asymmetric_advantages_20260520_161339.metadata.json",
+    "auto_name": true,
+    "overwrite": false
+  }
+}

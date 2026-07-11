@@ -1,0 +1,350 @@
+{
+  "format_version": "overcooked_demonstrations_v2",
+  "created_at_utc": "2026-05-24T17:53:27.174945+00:00",
+  "dataset_type": "human_or_policy_demonstrations_for_imitation_learning",
+  "mode": "collect_demonstrations",
+  "seed": 67,
+  "environment": {
+    "layout_name": "counter_circuit",
+    "layout_file": null,
+    "horizon": 250,
+    "old_dynamics": true
+  },
+  "layout": {
+    "layout_name": "counter_circuit",
+    "layout_file": null,
+    "horizon": 250,
+    "old_dynamics": true,
+    "width": 9,
+    "height": 5,
+    "grid_rows": [
+      "XXXPDPXXX",
+      "X       X",
+      "X XXXXX X",
+      "X       X",
+      "XXXOSTXXX"
+    ],
+    "grid_string": "XXXPDPXXX\nX       X\nX XXXXX X\nX       X\nXXXOSTXXX",
+    "terrain_pos_dict": {
+      "X": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          6,
+          0
+        ],
+        [
+          7,
+          0
+        ],
+        [
+          8,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          8,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          2
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          6,
+          2
+        ],
+        [
+          8,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          8,
+          3
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          6,
+          4
+        ],
+        [
+          7,
+          4
+        ],
+        [
+          8,
+          4
+        ]
+      ],
+      "P": [
+        [
+          3,
+          0
+        ],
+        [
+          5,
+          0
+        ]
+      ],
+      "D": [
+        [
+          4,
+          0
+        ]
+      ],
+      " ": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          6,
+          1
+        ],
+        [
+          7,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          7,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          6,
+          3
+        ],
+        [
+          7,
+          3
+        ]
+      ],
+      "O": [
+        [
+          3,
+          4
+        ]
+      ],
+      "S": [
+        [
+          4,
+          4
+        ]
+      ],
+      "T": [
+        [
+          5,
+          4
+        ]
+      ]
+    },
+    "start_player_positions": [
+      [
+        4,
+        3
+      ],
+      [
+        4,
+        1
+      ]
+    ],
+    "start_order_list": null,
+    "rew_shaping_params": null,
+    "custom_layout_dict": null
+  },
+  "observation": {
+    "config": {
+      "type": "featurized",
+      "include_agent_index": true
+    },
+    "type": "featurized",
+    "include_agent_index": true,
+    "note": "Each record stores obs and, when enabled, next_obs as produced by ObservationBuilder."
+  },
+  "actions": {
+    "convention": "0=north/up, 1=south/down, 2=east/right, 3=west/left, 4=stay, 5=interact",
+    "index_to_action_repr": {
+      "0": "north",
+      "1": "south",
+      "2": "east",
+      "3": "west",
+      "4": "stay",
+      "5": "interact"
+    },
+    "action_repr_to_index": {
+      "(0, -1)": 0,
+      "(0, 1)": 1,
+      "(1, 0)": 2,
+      "(-1, 0)": 3,
+      "(0, 0)": 4,
+      "'interact'": 5
+    }
+  },
+  "policies": {
+    "agent_0": {
+      "type": "builtin",
+      "name": "greedy_full_task",
+      "ingredient": "onion",
+      "avoid_teammate": true,
+      "random_action_prob": 0.0,
+      "max_action_time_ms": 100,
+      "invalid_action": "stay",
+      "timeout_action": "stay"
+    },
+    "agent_1": {
+      "type": "builtin",
+      "name": "human_keyboard",
+      "max_action_time_ms": 0,
+      "invalid_action": "stay",
+      "timeout_action": "stay",
+      "keymap": {
+        "up": [
+          "up",
+          "w"
+        ],
+        "down": [
+          "down",
+          "s"
+        ],
+        "left": [
+          "left",
+          "a"
+        ],
+        "right": [
+          "right",
+          "d"
+        ],
+        "interact": [
+          "space",
+          "e",
+          "return"
+        ]
+      },
+      "priority": [
+        "interact",
+        "up",
+        "down",
+        "left",
+        "right",
+        "stay"
+      ]
+    }
+  },
+  "execution": {
+    "config": {
+      "num_episodes": 1,
+      "episode_seeds": [
+        67
+      ],
+      "swap_agent_positions": false
+    },
+    "num_episodes": 1,
+    "episode_seeds": [
+      67
+    ],
+    "role_swaps": [
+      false
+    ]
+  },
+  "data_collection": {
+    "enabled": true,
+    "record_agent_indices": [
+      1
+    ],
+    "include_next_obs": true,
+    "include_info": false,
+    "output_path": null,
+    "npz_path": null,
+    "metadata_json_path": null
+  },
+  "files": {
+    "pickle_path": "data\\demonstrations\\counter_circuit_20260524_125327.pkl",
+    "npz_path": "data\\demonstrations\\counter_circuit_20260524_125327.npz",
+    "metadata_json_path": "data\\demonstrations\\counter_circuit_20260524_125327.metadata.json",
+    "auto_name": true,
+    "overwrite": false
+  }
+}

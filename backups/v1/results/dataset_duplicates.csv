@@ -1,0 +1,19 @@
+stem,path_1,path_2
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\coordination_ring\Partida 1\human_agent_1.npz
+human_agent_2,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 2\human_agent_2.npz,data\Shallow_Learning\20 grabaciones\coordination_ring\Partida 2\human_agent_2.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\counter_circuit\Partida 1\human_agent_1.npz
+human_agent_2,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 2\human_agent_2.npz,data\Shallow_Learning\20 grabaciones\counter_circuit\Partida 2\human_agent_2.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\cramped_room\Partida 1\human_agent_1.npz
+human_agent_2,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 2\human_agent_2.npz,data\Shallow_Learning\20 grabaciones\cramped_room\Partida 2\human_agent_2.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\forced_coordination\Partida 1\human_agent_1.npz
+human_agent_2,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 2\human_agent_2.npz,data\Shallow_Learning\20 grabaciones\forced_coordination\Partida 2\human_agent_2.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\large_room\Partida 1\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\large_room\Partida 2\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\simple_tomato\Partida 1\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\simple_tomato\Partida 2\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\small_corridor\Partida 1\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\small_corridor\Partida 2\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\soup_coordination\Partida 1\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\soup_coordination\Partida 2\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\tutorial_0\Partida 1\human_agent_1.npz
+human_agent_1,data\Shallow_Learning\20 grabaciones\asymmetric_advantages\Partida 1\human_agent_1.npz,data\Shallow_Learning\20 grabaciones\tutorial_0\Partida 2\human_agent_1.npz

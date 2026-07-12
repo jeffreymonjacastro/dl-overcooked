@@ -1,0 +1,65 @@
+# Option B Training Configuration: BC Warm-Start + FCP-style PPO
+
+data_root: data
+artifacts_dir: artifacts/option_b
+shared_dir: artifacts/shared
+reports_dir: reports
+
+# -------- BC Warm-Start Phase (B0) --------
+bc_warmstart:
+  k_stack: 4
+  hidden_sizes: [512, 256, 128]
+  dropout: 0.1
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  batch_size: 512
+  epochs: 60
+  patience: 12
+  label_smoothing: 0.02
+  train_frac: 0.80
+  val_frac: 0.10
+  seed: 42
+
+# -------- FCP-style PPO Phase (B1-B3) --------
+ppo:
+  # Hyperparameters
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  learning_rate: 3.0e-4
+  lr_warmup_steps: 1000
+  entropy_coef_start: 0.05
+  entropy_coef_end: 0.01
+  entropy_decay_steps: 500000
+  value_coef: 0.5
+  max_grad_norm: 0.5
+  ppo_epochs: 4
+  minibatch_size: 512
+  rollout_steps: 2048
+  total_steps: 1000000
+
+  # Partner pool
+  partner_sampling: adaptive_cole  # uniform or adaptive_cole
+  adaptive_epsilon: 0.20
+  adaptive_beta: 1.0
+  partner_score_update_freq: 10000
+
+  # Environment
+  layouts:
+    - cramped_room
+    - coordination_ring
+    - forced_coordination
+    - asymmetric_advantages
+    - counter_circuit
+  agent_role_swap: true
+
+  # Checkpointing
+  checkpoint_freq_steps: 50000
+  add_historical_checkpoint_freq: 100000
+  historical_checkpoint_seeds: [42, 123, 456, 789]
+
+# -------- Export --------
+export:
+  output_dir: artifacts/option_b
+  policy_name: option_b_fcp_ppo
+  normalization_path: artifacts/shared/normalization.json

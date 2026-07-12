@@ -1,0 +1,11 @@
+{
+  "title": "overcooked-option-b-data",
+  "id": "jeffreyamc/overcooked-option-b-data",
+  "licenses": [
+    {
+      "name": "CC0-1.0"
+    }
+  ],
+  "subtitle": "Overcooked AI human demonstrations for Option B training",
+  "description": "NPZ demonstration files from Overcooked-AI for BC warmstart and FCP-style PPO training. Contains 528 episodes from 24 human groups across multiple layouts including cramped_room, coordination_ring, forced_coordination, asymmetric_advantages, and counter_circuit."
+}

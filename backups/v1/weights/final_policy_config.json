@@ -1,0 +1,16 @@
+{
+  "option": "B",
+  "model_type": "fcp_ppo_mlp",
+  "obs_dim": 96,
+  "k_stack": 4,
+  "num_actions": 6,
+  "hidden_sizes": [
+    512,
+    256,
+    128
+  ],
+  "normalization_path": "backups/v1/weights/normalization.json",
+  "agent_index_encoding": "one_hot",
+  "previous_action": true,
+  "obs_stack_k": 4
+}

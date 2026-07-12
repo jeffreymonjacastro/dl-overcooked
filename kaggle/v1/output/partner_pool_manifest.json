@@ -1,0 +1,25 @@
+{
+  "partners": [
+    {
+      "id": "stay"
+    },
+    {
+      "id": "random"
+    },
+    {
+      "id": "greedy"
+    },
+    {
+      "id": "greedy10",
+      "noise": 0.1
+    },
+    {
+      "id": "greedy25",
+      "noise": 0.25
+    },
+    {
+      "id": "greedy40",
+      "noise": 0.4
+    }
+  ]
+}

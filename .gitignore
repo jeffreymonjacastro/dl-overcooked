@@ -32,9 +32,7 @@ htmlcov/
 # Logs and local run outputs
 *.log
 logs/
-outputs/
 runs/
-results/
 
 # RL / ML experiment artifacts
 wandb/
@@ -42,7 +40,6 @@ mlruns/
 tensorboard/
 lightning_logs/
 checkpoints/
-models/
 *.ckpt
 *.pt
 *.pth

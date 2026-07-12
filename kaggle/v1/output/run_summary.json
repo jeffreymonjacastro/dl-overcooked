@@ -1,0 +1,24 @@
+{
+  "status": "complete",
+  "stage": "done",
+  "artifacts": [
+    "normalization.json",
+    "bc_warmstart.pt",
+    "option_b_bc_training.csv",
+    "best_checkpoint_by_soups.pt",
+    "final_policy.npz",
+    "final_policy_config.json",
+    "option_b_evaluation.csv",
+    "eval_summary.json",
+    "partner_pool_manifest.json"
+  ],
+  "overcooked_available": true,
+  "bc_best_val_loss": 1.1324249758164997,
+  "ppo_env_ok": true,
+  "ppo_best_soups": 1.35,
+  "parity_ok": true,
+  "eval_summary": {
+    "mean_soups": 0.7037037037037037,
+    "zero_soup_rate": 0.7777777777777778
+  }
+}

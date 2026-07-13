@@ -1,860 +1,1164 @@
 import json
+import os
 import pathlib
+import sys
+import textwrap
 
-def build():
-    # Define the notebook cells
-    cells = []
-    
-    # Cell 1: Markdown header
-    cells.append({
-        "cell_type": "markdown",
-        "metadata": {},
-        "source": [
-            "# Option B: BC-Warmstarted FCP-style PPO (v4)\n",
-            "\n",
-            "**Architecture**: MLP(512→256→128) + obs stack K=4 + BC warm-start + FCP-style PPO\n",
-            "\n",
-            "**Key corrections (GUIA_CORRECCIONES_OPTION_A2)**:\n",
-            "- prev_action[t] = action[t-1], BOS=0 for t=0\n",
-            "- Quality tiers, checkpoint by soups, PyTorch→NumPy parity verified\n"
-        ]
-    })
-    
-    # Cell 2: Imports
-    cells.append({
+import yaml
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from training.layout_catalog import build_layout_catalog
+
+KAGGLE_VERSION = os.environ.get("KAGGLE_VERSION", "v1")
+NB_PATH = ROOT / "kaggle" / KAGGLE_VERSION / "input" / "main.ipynb"
+
+
+def md(source: str) -> dict:
+    return {"cell_type": "markdown", "metadata": {}, "source": textwrap.dedent(source).strip().splitlines(True)}
+
+
+def code(source: str) -> dict:
+    return {
         "cell_type": "code",
         "metadata": {},
         "outputs": [],
         "execution_count": None,
-        "source": [
-            "import os, sys, json, csv, time, pathlib, shutil, traceback, subprocess, zipfile\n",
-            "import numpy as np\n",
-            "import torch\n",
-            "import torch.nn as nn\n",
-            "import torch.nn.functional as F\n",
-            "import torch.optim as optim\n",
-            "from collections import deque\n",
-            "from torch.utils.data import Dataset, DataLoader\n",
-            "\n",
-            "OUTPUT_DIR = pathlib.Path('/kaggle/working')\n",
-            "OUTPUT_DIR.mkdir(parents=True, exist_ok=True)\n",
-            "\n",
-            "progress = {'status': 'running', 'stage': 'init', 'artifacts': []}\n",
-            "def save_progress():\n",
-            "    (OUTPUT_DIR / 'run_summary.json').write_text(json.dumps(progress, indent=2), encoding='utf-8')\n",
-            "save_progress()\n",
-            "\n",
-            "print(f'GPU: {torch.cuda.is_available()}')\n",
-            "if torch.cuda.is_available(): print(f'  {torch.cuda.get_device_name(0)}')\n",
-            "DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')\n",
-            "print(f'Device: {DEVICE}')\n"
-        ]
-    })
-    
-    # Cell 3: Install packages
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "progress['stage'] = 'install'; save_progress()\n",
-            "\n",
-            "def run_cmd(cmds, quiet=True):\n",
-            "    r = subprocess.run(cmds, capture_output=True, text=True)\n",
-            "    if not quiet or r.returncode != 0:\n",
-            "        if r.stdout: print('  OUT:', r.stdout[-300:])\n",
-            "        if r.stderr: print('  ERR:', r.stderr[-300:])\n",
-            "    return r.returncode == 0\n",
-            "\n",
-            "OVERCOOKED_INSTALLED = False\n",
-            "\n",
-            "# Attempt 1: PyPI install (relaxed dependencies)\n",
-            "print('[1] Trying PyPI install of overcooked-ai...')\n",
-            "if run_cmd(['pip', 'install', 'overcooked-ai', '--no-deps', '-q']):\n",
-            "    run_cmd(['pip', 'install', 'PyYAML>=6.0', 'scipy', 'dill', 'flask', '-q'])\n",
-            "    try:\n",
-            "        import numpy as np\n",
-            "        np.Inf = np.inf\n",
-            "        import overcooked_ai_py; OVERCOOKED_INSTALLED = True; print('  OK')\n",
-            "    except Exception as e: print(f'  Import failed: {e}')\n",
-            "\n",
-            "# Attempt 2: GitHub source\n",
-            "if not OVERCOOKED_INSTALLED:\n",
-            "    print('[2] Trying GitHub source...')\n",
-            "    if run_cmd(['pip', 'install', 'git+https://github.com/HumanCompatibleAI/overcooked_ai.git', '--no-deps', '-q']):\n",
-            "        run_cmd(['pip', 'install', 'PyYAML>=6.0', 'scipy', 'dill', '-q'])\n",
-            "        try:\n",
-            "            import numpy as np\n",
-            "            np.Inf = np.inf\n",
-            "            import overcooked_ai_py; OVERCOOKED_INSTALLED = True; print('  OK')\n",
-            "        except Exception as e: print(f'  Import failed: {e}')\n",
-            "\n",
-            "print(f'OVERCOOKED_INSTALLED: {OVERCOOKED_INSTALLED}')\n",
-            "progress['overcooked_available'] = OVERCOOKED_INSTALLED; save_progress()\n"
-        ]
-    })
-    
-    # Cell 4: Extract data zip and locate files
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "progress['stage'] = 'validate_inputs'; save_progress()\n",
-            "\n",
-            "# Extract any zip files in /kaggle/input\n",
-            "for zip_path in pathlib.Path('/kaggle/input').rglob('*.zip'):\n",
-            "    print(f'Extracting dataset zip: {zip_path}...')\n",
-            "    try:\n",
-            "        with zipfile.ZipFile(zip_path, 'r') as zip_ref:\n",
-            "            zip_ref.extractall('/kaggle/working')\n",
-            "        print('  Extracted OK')\n",
-            "    except Exception as e:\n",
-            "        print(f'  Failed to extract {zip_path}: {e}')\n",
-            "\n",
-            "# Look for npz files in /kaggle/working/data or /kaggle/input/\n",
-            "DATA_DIR = None\n",
-            "npz_files = []\n",
-            "\n",
-            "for p in [pathlib.Path('/kaggle/working/data'), pathlib.Path('/kaggle/working')] + list(pathlib.Path('/kaggle/input').glob('*')):\n",
-            "    if p.exists() and p.is_dir():\n",
-            "        found = list(p.rglob('*.npz'))\n",
-            "        print(f'  {p}: {len(found)} npz files')\n",
-            "        if len(found) > len(npz_files):\n",
-            "            DATA_DIR = p\n",
-            "            npz_files = found\n",
-            "\n",
-            "print(f'Using data from: {DATA_DIR}')\n",
-            "print(f'Total npz files: {len(npz_files)}')\n",
-            "\n",
-            "if not npz_files:\n",
-            "    # create synthetic minimal dataset for pipeline testing\n",
-            "    print('WARNING: No data found. Creating minimal synthetic dataset for testing...')\n",
-            "    DATA_DIR = OUTPUT_DIR / 'synthetic_data'\n",
-            "    DATA_DIR.mkdir(exist_ok=True)\n",
-            "    OBS_DIM = 96\n",
-            "    for i in range(20):\n",
-            "        T = 250\n",
-            "        obs = np.random.randn(T, OBS_DIM).astype(np.float32)\n",
-            "        actions = np.random.randint(0, 6, T).astype(np.int64)\n",
-            "        actions[50] = 5; actions[100] = 5; actions[150] = 5\n",
-            "        rewards = np.zeros(T, dtype=np.float32)\n",
-            "        rewards[60] = 20.0; rewards[110] = 20.0\n",
-            "        dones = np.zeros(T, dtype=bool); dones[-1] = True\n",
-            "        ep_ids = np.zeros(T, dtype=int)\n",
-            "        agent_idxs = np.full(T, i % 2, dtype=int)\n",
-            "        np.savez_compressed(DATA_DIR / f'synthetic_ep_{i:03d}.npz',\n",
-            "            obs=obs, actions=actions, rewards=rewards, dones=dones,\n",
-            "            episode_ids=ep_ids, agent_indices=agent_idxs)\n",
-            "    npz_files = list(DATA_DIR.rglob('*.npz'))\n",
-            "    print(f'Created {len(npz_files)} synthetic episodes')\n",
-            "    progress['synthetic_data'] = True; save_progress()\n",
-            "\n",
-            "# Validate first file\n",
-            "f = npz_files[0]; d = np.load(f, allow_pickle=True)\n",
-            "print(f'Sample: {f.name}, keys={list(d.keys())}')\n",
-            "print(f'obs shape: {d[\"obs\"].shape}')\n",
-            "OBS_DIM = d['obs'].shape[1] if d['obs'].ndim > 1 else 96\n",
-            "print(f'OBS_DIM = {OBS_DIM}')\n"
-        ]
-    })
-    
-    # Cell 5: Model definitions
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "class MLP(nn.Module):\n",
-            "    def __init__(self, layer_sizes, activation='relu', use_layer_norm=True, dropout=0.0):\n",
-            "        super().__init__()\n",
-            "        layers = []\n",
-            "        for i in range(len(layer_sizes) - 1):\n",
-            "            layers.append(nn.Linear(layer_sizes[i], layer_sizes[i+1]))\n",
-            "            is_last = (i == len(layer_sizes) - 2)\n",
-            "            if not is_last:\n",
-            "                if use_layer_norm: layers.append(nn.LayerNorm(layer_sizes[i+1]))\n",
-            "                layers.append(nn.ReLU())\n",
-            "                if dropout > 0: layers.append(nn.Dropout(dropout))\n",
-            "        self.net = nn.Sequential(*layers)\n",
-            "    def forward(self, x): return self.net(x)\n",
-            "\n",
-            "\n",
-            "class BCWarmstartActor(nn.Module):\n",
-            "    def __init__(self, obs_dim=96, k_stack=4, num_actions=6, hidden_sizes=(512,256,128), dropout=0.1):\n",
-            "        super().__init__()\n",
-            "        self.obs_dim=obs_dim; self.k_stack=k_stack; self.num_actions=num_actions\n",
-            "        input_dim = k_stack*obs_dim + 2 + num_actions\n",
-            "        self.encoder = MLP([input_dim]+list(hidden_sizes), dropout=dropout)\n",
-            "        self.actor_head = nn.Linear(hidden_sizes[-1], num_actions)\n",
-            "        for m in self.modules():\n",
-            "            if isinstance(m, nn.Linear): nn.init.orthogonal_(m.weight); nn.init.zeros_(m.bias)\n",
-            "        nn.init.orthogonal_(self.actor_head.weight, gain=0.01)\n",
-            "\n",
-            "    def forward(self, stack_obs, agent_index, prev_action):\n",
-            "        ah = F.one_hot(agent_index.long(), 2).float()\n",
-            "        ph = F.one_hot(prev_action.long(), self.num_actions).float()\n",
-            "        return self.actor_head(self.encoder(torch.cat([stack_obs, ah, ph], -1)))\n",
-            "\n",
-            "\n",
-            "class ActorCritic(nn.Module):\n",
-            "    def __init__(self, obs_dim=96, k_stack=4, num_actions=6, hidden_sizes=(512,256,128), dropout=0.05):\n",
-            "        super().__init__()\n",
-            "        self.obs_dim=obs_dim; self.k_stack=k_stack; self.num_actions=num_actions\n",
-            "        input_dim = k_stack*obs_dim + 2 + num_actions\n",
-            "        ls = [input_dim]+list(hidden_sizes)\n",
-            "        self.actor_encoder = MLP(ls, dropout=dropout)\n",
-            "        self.actor_head = nn.Linear(hidden_sizes[-1], num_actions)\n",
-            "        self.critic_encoder = MLP(ls, dropout=dropout)\n",
-            "        self.critic_head = nn.Linear(hidden_sizes[-1], 1)\n",
-            "        for m in self.modules():\n",
-            "            if isinstance(m, nn.Linear): nn.init.orthogonal_(m.weight); nn.init.zeros_(m.bias)\n",
-            "        nn.init.orthogonal_(self.actor_head.weight, gain=0.01)\n",
-            "\n",
-            "    def _inp(self, so, ai, pa):\n",
-            "        return torch.cat([so, F.one_hot(ai.long(),2).float(), F.one_hot(pa.long(),self.num_actions).float()], -1)\n",
-            "\n",
-            "    def actor_logits(self, so, ai, pa):\n",
-            "        return self.actor_head(self.actor_encoder(self._inp(so, ai, pa)))\n",
-            "\n",
-            "    def forward(self, so, ai, pa):\n",
-            "        x = self._inp(so, ai, pa)\n",
-            "        return self.actor_head(self.actor_encoder(x)), self.critic_head(self.critic_encoder(x)).squeeze(-1)\n",
-            "\n",
-            "    def load_from_bc(self, bc):\n",
-            "        self.actor_encoder.load_state_dict(bc.encoder.state_dict())\n",
-            "        self.actor_head.load_state_dict(bc.actor_head.state_dict())\n",
-            "\n",
-            "print('Models OK')\n"
-        ]
-    })
-    
-    # Cell 6: Load data and build splits
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "progress['stage'] = 'dataset'; save_progress()\n",
-            "\n",
-            "def quality_tier(rew, act):\n",
-            "    s = float(rew.sum()) / 20.0\n",
-            "    if s >= 2: return 'A', 1.5\n",
-            "    if s >= 1: return 'B', 1.0\n",
-            "    stay = (act==4).mean()\n",
-            "    mx = 1; c = 1\n",
-            "    for i in range(1, len(act)):\n",
-            "        c = c+1 if act[i]==act[i-1] else 1; mx = max(mx, c)\n",
-            "    if (act==5).sum()>5 and stay<0.8 and mx<50: return 'C', 0.4\n",
-            "    if stay>0.9 or mx>100: return 'D', 0.0\n",
-            "    return 'C', 0.4\n",
-            "\n",
-            "def load_episodes(data_dir):\n",
-            "    eps = []; seen = set()\n",
-            "    for fp in sorted(pathlib.Path(data_dir).rglob('*.npz')):\n",
-            "        if fp.stem in seen: continue\n",
-            "        seen.add(fp.stem)\n",
-            "        try:\n",
-            "            d = np.load(fp, allow_pickle=True)\n",
-            "            obs=d['obs'].astype(np.float32); acts=d['actions'].astype(np.int64)\n",
-            "            rews=d.get('rewards', np.zeros(len(acts), dtype=np.float32))\n",
-            "            epids=d.get('episode_ids', np.zeros(len(obs),int))\n",
-            "            agidxs=d.get('agent_indices', np.zeros(len(obs),int))\n",
-            "            for eid in np.unique(epids):\n",
-            "                m=epids==eid\n",
-            "                if m.sum()<5: continue\n",
-            "                tier,w = quality_tier(rews[m], acts[m])\n",
-            "                if tier=='D': continue\n",
-            "                eps.append({'obs':obs[m],'actions':acts[m],'rewards':rews[m],\n",
-            "                            'agent_index':int(agidxs[m][0]),'quality_tier':tier,\n",
-            "                            'quality_weight':w,'soups':float(rews[m].sum())/20})\n",
-            "        except Exception as e:\n",
-            "            print(f'Error reading {fp}: {e}')\n",
-            "    return eps\n",
-            "\n",
-            "episodes = load_episodes(DATA_DIR)\n",
-            "print(f'Loaded {len(episodes)} episodes')\n",
-            "tc = {}; [tc.update({e['quality_tier']: tc.get(e['quality_tier'],0)+1}) for e in episodes]\n",
-            "print('Tiers:', tc, '| mean_soups:', round(np.mean([e['soups'] for e in episodes]),2))\n",
-            "\n",
-            "# Split by episode\n",
-            "rng = np.random.default_rng(42)\n",
-            "idx = rng.permutation(len(episodes)).tolist()\n",
-            "n_tr = int(len(idx)*.80); n_v = int(len(idx)*.10)\n",
-            "train_eps = [episodes[i] for i in idx[:n_tr]]\n",
-            "val_eps = [episodes[i] for i in idx[n_tr:n_tr+n_v]]\n",
-            "\n",
-            "# Normalization from train only\n",
-            "all_tr = np.concatenate([e['obs'] for e in train_eps], 0)\n",
-            "NORM_MEAN = all_tr.mean(0).astype(np.float32)\n",
-            "NORM_STD = np.maximum(all_tr.std(0), 1e-8).astype(np.float32)\n",
-            "norm_stats = {'mean': NORM_MEAN.tolist(), 'std': NORM_STD.tolist()}\n",
-            "(OUTPUT_DIR/'normalization.json').write_text(json.dumps(norm_stats, indent=2))\n",
-            "print(f'Normalization computed. obs_dim={len(NORM_MEAN)}')\n",
-            "\n",
-            "progress['artifacts'].append('normalization.json'); save_progress()\n"
-        ]
-    })
-    
-    # Cell 7: BC Dataset and Dataloaders
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "K_STACK=4; BATCH=512\n",
-            "\n",
-            "class BCDataset(Dataset):\n",
-            "    def __init__(self, eps, nm, ns, k=4):\n",
-            "        self.k=k; self.smp=[]\n",
-            "        all_a = np.concatenate([e['actions'] for e in eps])\n",
-            "        cnt = np.maximum(np.bincount(all_a, minlength=6).astype(float), 1.)\n",
-            "        aw = np.clip(cnt.sum()/(6*cnt)/cnt.sum()*cnt.sum(), .5, 3.).astype(np.float32)\n",
-            "        for ep in eps:\n",
-            "            on = (ep['obs']-nm)/ns; acts=ep['actions']; ai=ep['agent_index']; qw=ep['quality_weight']\n",
-            "            for t in range(len(acts)):\n",
-            "                st = np.concatenate([on[max(0,t-j)] for j in range(k-1,-1,-1)]).astype(np.float32)\n",
-            "                pa = int(acts[t-1]) if t>0 else 0\n",
-            "                ta = int(acts[t])\n",
-            "                w = float(np.clip(qw*aw[ta], .05, 5.))\n",
-            "                self.smp.append((st, ai, pa, ta, w))\n",
-            "    def __len__(self): return len(self.smp)\n",
-            "    def __getitem__(self, i):\n",
-            "        st,ai,pa,ta,w = self.smp[i]\n",
-            "        return torch.from_numpy(st), torch.tensor(ai,dtype=torch.long), torch.tensor(pa,dtype=torch.long), torch.tensor(ta,dtype=torch.long), torch.tensor(w,dtype=torch.float32)\n",
-            "\n",
-            "print('Building datasets...')\n",
-            "tr_ds = BCDataset(train_eps, NORM_MEAN, NORM_STD, K_STACK)\n",
-            "vl_ds = BCDataset(val_eps, NORM_MEAN, NORM_STD, K_STACK)\n",
-            "print(f'Train: {len(tr_ds)}, Val: {len(vl_ds)} samples')\n",
-            "tr_dl = DataLoader(tr_ds, BATCH, shuffle=True, num_workers=2, pin_memory=True, drop_last=True)\n",
-            "vl_dl = DataLoader(vl_ds, BATCH, shuffle=False, num_workers=2)\n"
-        ]
-    })
-    
-    # Cell 8: BC Warm-Start Training
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "progress['stage']='bc_warmstart'; save_progress()\n",
-            "\n",
-            "HS=(512,256,128)\n",
-            "bc_model = BCWarmstartActor(OBS_DIM, K_STACK, 6, HS, dropout=0.1).to(DEVICE)\n",
-            "print(f'BC params: {sum(p.numel() for p in bc_model.parameters()):,}')\n",
-            "\n",
-            "opt_bc = optim.Adam(bc_model.parameters(), lr=3e-4, weight_decay=1e-4)\n",
-            "sched = optim.lr_scheduler.CosineAnnealingLR(opt_bc, T_max=60, eta_min=1e-5)\n",
-            "\n",
-            "best_vl = float('inf'); pat=0; BC_PAT=12; history=[]\n",
-            "\n",
-            "for epoch in range(1, 61):\n",
-            "    t0=time.time()\n",
-            "    bc_model.train()\n",
-            "    tl=tc_=tt_=0\n",
-            "    for st,ai,pa,ta,sw in tr_dl:\n",
-            "        st,ai,pa,ta,sw = st.to(DEVICE),ai.to(DEVICE),pa.to(DEVICE),ta.to(DEVICE),sw.to(DEVICE)\n",
-            "        logits=bc_model(st,ai,pa)\n",
-            "        ce=F.cross_entropy(logits,ta,reduction='none',label_smoothing=0.02)\n",
-            "        loss=(ce*sw).sum()/sw.sum().clamp(1.)\n",
-            "        opt_bc.zero_grad(); loss.backward()\n",
-            "        nn.utils.clip_grad_norm_(bc_model.parameters(), 1.); opt_bc.step()\n",
-            "        tl+=loss.item()*len(ta); tc_+=(logits.argmax(-1)==ta).sum().item(); tt_+=len(ta)\n",
-            "    sched.step()\n",
-            "\n",
-            "    bc_model.eval(); vl=vc=vt=0\n",
-            "    with torch.no_grad():\n",
-            "        for st,ai,pa,ta,sw in vl_dl:\n",
-            "            st,ai,pa,ta,sw=st.to(DEVICE),ai.to(DEVICE),pa.to(DEVICE),ta.to(DEVICE),sw.to(DEVICE)\n",
-            "            logits=bc_model(st,ai,pa)\n",
-            "            ce=F.cross_entropy(logits,ta,reduction='none')\n",
-            "            l=(ce*sw).sum()/sw.sum().clamp(1.)\n",
-            "            vl+=l.item()*len(ta); vc+=(logits.argmax(-1)==ta).sum().item(); vt+=len(ta)\n",
-            "\n",
-            "    tl_=tl/max(tt_,1); vl_=vl/max(vt,1); el=time.time()-t0\n",
-            "    row={'epoch':epoch,'train_loss':round(tl_,6),'train_acc':round(tc_/max(tt_,1),4),\n",
-            "         'val_loss':round(vl_,6),'val_acc':round(vc/max(vt,1),4),'elapsed_s':round(el,2)}\n",
-            "    history.append(row)\n",
-            "    print(f'  E{epoch:3d}: tr={tl_:.4f} vl={vl_:.4f} va={vc/max(vt,1):.3f} ({el:.1f}s)')\n",
-            "\n",
-            "    if vl_ < best_vl:\n",
-            "        best_vl=vl_; pat=0\n",
-            "        torch.save({'epoch':epoch,'model_state_dict':bc_model.state_dict(),'val_loss':vl_,\n",
-            "                    'obs_dim':OBS_DIM,'k_stack':K_STACK,'hidden_sizes':list(HS)}, OUTPUT_DIR/'bc_warmstart.pt')\n",
-            "        print(f'    \u2713 best val_loss={best_vl:.4f}')\n",
-            "        progress['bc_best_val_loss']=best_vl; save_progress()\n",
-            "    else:\n",
-            "        pat+=1\n",
-            "        if pat>=BC_PAT: print(f'Early stop at {epoch}'); break\n",
-            "\n",
-            "with open(OUTPUT_DIR/'option_b_bc_training.csv','w',newline='') as f:\n",
-            "    w=csv.DictWriter(f,fieldnames=list(history[0].keys())); w.writeheader(); w.writerows(history)\n",
-            "progress['artifacts'].extend(['bc_warmstart.pt','option_b_bc_training.csv']); save_progress()\n",
-            "print(f'BC done. best_val_loss={best_vl:.6f}')\n"
-        ]
-    })
-    
-    # Cell 9: Load BC and initialize ActorCritic
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "ck = torch.load(OUTPUT_DIR/'bc_warmstart.pt', map_location=DEVICE, weights_only=False)\n",
-            "bc_model.load_state_dict(ck['model_state_dict']); bc_model.eval()\n",
-            "print(f'Loaded BC epoch={ck[\"epoch\"]}, val_loss={ck[\"val_loss\"]:.4f}')\n",
-            "\n",
-            "ppo_model = ActorCritic(OBS_DIM, K_STACK, 6, HS, dropout=0.05).to(DEVICE)\n",
-            "ppo_model.load_from_bc(bc_model)\n",
-            "print(f'ActorCritic initialized from BC. params: {sum(p.numel() for p in ppo_model.parameters()):,}')\n"
-        ]
-    })
-    
-    # Cell 10: Import and setup environment
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "progress['stage']='ppo_training'; save_progress()\n",
-            "\n",
-            "if OVERCOOKED_INSTALLED:\n",
-            "    try:\n",
-            "        import numpy as np\n",
-            "        np.Inf = np.inf\n",
-            "        np.bool = bool\n",
-            "        np.int = int\n",
-            "        np.float = float\n",
-            "        from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv\n",
-            "        from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld\n",
-            "        from overcooked_ai_py.agents.agent import GreedyHumanModel, RandomAgent, StayAgent\n",
-            "        from overcooked_ai_py.mdp.actions import Action\n",
-            "        # Monkeypatch Action.sample for NumPy 2.0+ compatibility\n",
-            "        Action.sample = lambda action_probs: Action.ALL_ACTIONS[np.random.choice(len(Action.ALL_ACTIONS), p=action_probs)]\n",
-            "        PPO_ENV_OK = True\n",
-            "        print('overcooked_ai_py environment ready')\n",
-            "    except Exception as e:\n",
-            "        PPO_ENV_OK = False\n",
-            "        print(f'overcooked_ai_py import failed: {e}. PPO phase skipped.')\n",
-            "else:\n",
-            "    PPO_ENV_OK = False\n",
-            "    print('overcooked not installed. Skipping PPO phase.')\n",
-            "\n",
-            "progress['ppo_env_ok'] = PPO_ENV_OK; save_progress()\n"
-        ]
-    })
-    
-    # Cell 11: PPO training loop (the core cell!)
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "if PPO_ENV_OK:\n",
-            "    # Exclude counter_circuit because GreedyHumanModel does not support tomato recipes\n",
-            "    LAYOUTS = ['cramped_room','coordination_ring','forced_coordination','asymmetric_advantages']\n",
-            "    HORIZON = 250\n",
-            "\n",
-            "    def build_env(layout, seed=42):\n",
-            "        mdp = OvercookedGridworld.from_layout_name(layout)\n",
-            "        return OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0)\n",
-            "\n",
-            "    def featurize(env, state, ai):\n",
-            "        return env.featurize_state_mdp(state)[ai].astype(np.float32)\n",
-            "\n",
-            "    class EpsGreedy:\n",
-            "        def __init__(self, base, eps, seed=42):\n",
-            "            self.base=base; self.eps=eps; self.rng=np.random.default_rng(seed)\n",
-            "        def action(self, s):\n",
-            "            if self.rng.random()<self.eps:\n",
-            "                return Action.INDEX_TO_ACTION[int(self.rng.integers(0,6))], {}\n",
-            "            return self.base.action(s)\n",
-            "        def reset(self): pass\n",
-            "        def set_agent_index(self, i): self.base.set_agent_index(i)\n",
-            "        def set_mdp(self, m): self.base.set_mdp(m)\n",
-            "\n",
-            "    def make_partner(ptype, env, seed=42):\n",
-            "        if ptype=='stay': return StayAgent()\n",
-            "        if ptype=='random': return RandomAgent(all_actions=True)\n",
-            "        base = GreedyHumanModel(env.mlam)\n",
-            "        if ptype=='greedy': return base\n",
-            "        eps = {'greedy10':0.1,'greedy25':0.25,'greedy40':0.40}.get(ptype,0.25)\n",
-            "        return EpsGreedy(base, eps, seed)\n",
-            "\n",
-            "    PTYPES = ['stay','random','greedy','greedy10','greedy25','greedy40']\n",
-            "    PSCORES = {p: [] for p in PTYPES}\n",
-            "\n",
-            "    def sample_partner_cole(eps=0.2, beta=1.0):\n",
-            "        avg = np.array([np.mean(PSCORES[p]) if PSCORES[p] else .5 for p in PTYPES])\n",
-            "        rng_s = avg.max()-avg.min()\n",
-            "        n = (avg-avg.min())/rng_s if rng_s>0 else np.full(len(avg),.5)\n",
-            "        x=-beta*n; x=x-x.max(); sm=np.exp(x)/np.exp(x).sum()\n",
-            "        probs=(1-eps)*sm+eps/len(PTYPES); probs/=probs.sum()\n",
-            "        return np.random.choice(PTYPES, p=probs)\n",
-            "\n",
-            "    # Precompute and cache all environment/partner combinations to avoid massive overhead\n",
-            "    print('Precomputing planning graphs for all environments and partners...')\n",
-            "    t_start_cache = time.time()\n",
-            "    ENV_CACHE = {}\n",
-            "    PARTNER_CACHE = {}\n",
-            "    for lay in LAYOUTS:\n",
-            "        print(f'  Precomputing {lay}...')\n",
-            "        env = build_env(lay)\n",
-            "        ENV_CACHE[lay] = env\n",
-            "        PARTNER_CACHE[lay] = {}\n",
-            "        for pt in PTYPES:\n",
-            "            PARTNER_CACHE[lay][pt] = make_partner(pt, env)\n",
-            "    print(f'Precomputation done! Took {time.time() - t_start_cache:.1f}s')\n",
-            "\n",
-            "    # PPO hyperparameters\n",
-            "    GAMMA=0.99; LAM=0.95; CLIP=0.2; LR=3e-4\n",
-            "    ENT_S=0.05; ENT_E=0.01; ENT_D=100000; VC=0.5; MG=0.5\n",
-            "    PPO_EP=4; MB=512; RS=2048; TOTAL=150_000\n",
-            "\n",
-            "    opt_ppo = optim.Adam(ppo_model.parameters(), lr=LR)\n",
-            "\n",
-            "    def make_stack(dq, k=4):\n",
-            "        return np.concatenate(list(dq)).astype(np.float32)\n",
-            "\n",
-            "    gstep=0; ep_rets=[]; ep_soups=[]; ppo_hist=[]\n",
-            "    best_soups=-1e9\n",
-            "\n",
-            "    # Rollout buffers\n",
-            "    rb_st=np.zeros((RS,K_STACK*OBS_DIM),np.float32)\n",
-            "    rb_ai=np.zeros(RS,np.int64); rb_pa=np.zeros(RS,np.int64)\n",
-            "    rb_ac=np.zeros(RS,np.int64); rb_rw=np.zeros(RS,np.float32)\n",
-            "    rb_dn=np.zeros(RS,np.float32); rb_vl=np.zeros(RS,np.float32)\n",
-            "    rb_lp=np.zeros(RS,np.float32)\n",
-            "\n",
-            "    # Init episode\n",
-            "    cur_l=np.random.choice(LAYOUTS); cur_pt=sample_partner_cole(); cur_role=np.random.randint(0,2)\n",
-            "    env=ENV_CACHE[cur_l]; partner=PARTNER_CACHE[cur_l][cur_pt]\n",
-            "    env.reset(regen_mdp=False); state=env.state\n",
-            "    dq=deque([np.zeros(OBS_DIM,np.float32)]*K_STACK,maxlen=K_STACK)\n",
-            "    dq.append((featurize(env,state,cur_role)-NORM_MEAN)/NORM_STD)\n",
-            "    prev_a=0; ep_r=0.; ep_s=0.; t0_ppo=time.time()\n",
-            "\n",
-            "    print(f'PPO start. Total steps: {TOTAL:,}')\n",
-            "    while gstep<TOTAL:\n",
-            "        ppo_model.eval()\n",
-            "        for si in range(RS):\n",
-            "            st_np=make_stack(dq,K_STACK)\n",
-            "            with torch.no_grad():\n",
-            "                logits,val=ppo_model(\n",
-            "                    torch.from_numpy(st_np).unsqueeze(0).to(DEVICE),\n",
-            "                    torch.tensor([cur_role],dtype=torch.long,device=DEVICE),\n",
-            "                    torch.tensor([prev_a],dtype=torch.long,device=DEVICE))\n",
-            "                dist=torch.distributions.Categorical(logits=logits)\n",
-            "                ac=dist.sample(); lp=dist.log_prob(ac)\n",
-            "            ac_i=int(ac.item())\n",
-            "            ego_a=Action.INDEX_TO_ACTION[ac_i]\n",
-            "            partner.set_agent_index(1-cur_role); partner.set_mdp(env.mdp)\n",
-            "            pa_a,_=partner.action(state)\n",
-            "            ja=[ego_a,pa_a] if cur_role==0 else [pa_a,ego_a]\n",
-            "            ns,rew,done,_=env.step(ja)\n",
-            "            ep_r+=float(rew); ep_s+=float(rew)/20.\n",
-            "            rb_st[si]=st_np; rb_ai[si]=cur_role; rb_pa[si]=prev_a\n",
-            "            rb_ac[si]=ac_i; rb_rw[si]=float(rew); rb_dn[si]=float(done)\n",
-            "            rb_vl[si]=float(val.item()); rb_lp[si]=float(lp.item())\n",
-            "            prev_a=ac_i; state=ns\n",
-            "            dq.append((featurize(env,state,cur_role)-NORM_MEAN)/NORM_STD)\n",
-            "            if done:\n",
-            "                ep_rets.append(ep_r); ep_soups.append(ep_s)\n",
-            "                PSCORES[cur_pt].append(ep_s)\n",
-            "                if len(PSCORES[cur_pt])>20: PSCORES[cur_pt]=PSCORES[cur_pt][-20:]\n",
-            "                cur_l=np.random.choice(LAYOUTS); cur_pt=sample_partner_cole()\n",
-            "                cur_role=np.random.randint(0,2)\n",
-            "                env=ENV_CACHE[cur_l]; partner=PARTNER_CACHE[cur_l][cur_pt]\n",
-            "                env.reset(regen_mdp=False); state=env.state\n",
-            "                dq=deque([np.zeros(OBS_DIM,np.float32)]*K_STACK,maxlen=K_STACK)\n",
-            "                dq.append((featurize(env,state,cur_role)-NORM_MEAN)/NORM_STD)\n",
-            "                prev_a=0; ep_r=0.; ep_s=0.\n",
-            "\n",
-            "        # Bootstrap\n",
-            "        with torch.no_grad():\n",
-            "            _,lv=ppo_model(torch.from_numpy(make_stack(dq,K_STACK)).unsqueeze(0).to(DEVICE),\n",
-            "                           torch.tensor([cur_role],dtype=torch.long,device=DEVICE),\n",
-            "                           torch.tensor([prev_a],dtype=torch.long,device=DEVICE))\n",
-            "        lv_f=float(lv.item()); ld=bool(rb_dn[RS-1])\n",
-            "\n",
-            "        # GAE\n",
-            "        adv=np.zeros(RS,np.float32); g=0.\n",
-            "        for t in reversed(range(RS)):\n",
-            "            nnt=1.-ld if t==RS-1 else 1.-rb_dn[t+1]\n",
-            "            nv=lv_f if t==RS-1 else rb_vl[t+1]\n",
-            "            d_=rb_rw[t]+GAMMA*nv*nnt-rb_vl[t]\n",
-            "            g=d_+GAMMA*LAM*nnt*g; adv[t]=g\n",
-            "        rets=adv+rb_vl\n",
-            "        adv=(adv-adv.mean())/(adv.std()+1e-8)\n",
-            "\n",
-            "        # PPO updates\n",
-            "        ppo_model.train()\n",
-            "        pgs=[]; vs=[]; ents=[]\n",
-            "        ec=ENT_S+(ENT_E-ENT_S)*min(gstep/ENT_D,1.)\n",
-            "        for _ in range(PPO_EP):\n",
-            "            for st in range(0,RS,MB):\n",
-            "                idx=np.random.permutation(RS)[st:st+MB]\n",
-            "                logits,vals=ppo_model(\n",
-            "                    torch.from_numpy(rb_st[idx]).to(DEVICE),\n",
-            "                    torch.from_numpy(rb_ai[idx]).to(DEVICE),\n",
-            "                    torch.from_numpy(rb_pa[idx]).to(DEVICE))\n",
-            "                d=torch.distributions.Categorical(logits=logits)\n",
-            "                nlp=d.log_prob(torch.from_numpy(rb_ac[idx]).to(DEVICE))\n",
-            "                ent=d.entropy().mean()\n",
-            "                mb_a=torch.from_numpy(adv[idx]).to(DEVICE)\n",
-            "                mb_r=torch.from_numpy(rets[idx]).to(DEVICE)\n",
-            "                olp=torch.from_numpy(rb_lp[idx]).to(DEVICE)\n",
-            "                rat=torch.exp(nlp-olp)\n",
-            "                pg=torch.max(-mb_a*rat,-mb_a*torch.clamp(rat,1-CLIP,1+CLIP)).mean()\n",
-            "                vl_=F.mse_loss(vals,mb_r)\n",
-            "                loss=pg+VC*vl_-ec*ent\n",
-            "                opt_ppo.zero_grad(); loss.backward()\n",
-            "                nn.utils.clip_grad_norm_(ppo_model.parameters(),MG); opt_ppo.step()\n",
-            "                pgs.append(pg.item()); vs.append(vl_.item()); ents.append(ent.item())\n",
-            "\n",
-            "        gstep+=RS\n",
-            "        if len(ep_rets)>=5:\n",
-            "            ms=np.mean(ep_soups[-20:]); zs=(np.array(ep_soups[-20:])<.5).mean()\n",
-            "            et=time.time()-t0_ppo\n",
-            "            r={'step':gstep,'mean_soups':round(float(ms),4),'zero_soup_rate':round(float(zs),4),\n",
-            "               'pg_loss':round(float(np.mean(pgs)),6),'entropy':round(float(np.mean(ents)),4),'elapsed_s':round(et,1)}\n",
-            "            ppo_hist.append(r)\n",
-            "            print(f'  Step {gstep:7d}: soups={ms:.2f} zero={zs:.2f} ent={ec:.4f} ({et:.0f}s)')\n",
-            "            if ms>best_soups:\n",
-            "                best_soups=ms\n",
-            "                torch.save({'step':gstep,'model_state_dict':ppo_model.state_dict(),'mean_soups':ms,'zero_soup_rate':zs,\n",
-            "                            'obs_dim':OBS_DIM,'k_stack':K_STACK,'hidden_sizes':list(HS)}, OUTPUT_DIR/'best_checkpoint_by_soups.pt')\n",
-            "                print(f'    \u2713 new best soups={best_soups:.3f}')\n",
-            "                progress['ppo_best_soups']=float(best_soups); save_progress()\n",
-            "            with open(OUTPUT_DIR/'option_b_ppo_training.csv','w',newline='') as f:\n",
-            "                w=csv.DictWriter(f,fieldnames=list(r.keys())); w.writeheader(); w.writerows(ppo_hist)\n",
-            "\n",
-            "    print(f'PPO done. best_soups={best_soups:.3f}')\n",
-            "    progress['artifacts'].append('best_checkpoint_by_soups.pt'); save_progress()\n",
-            "else:\n",
-            "    print('PPO skipped (no overcooked env). Using BC model as final.')\n"
-        ]
-    })
-    
-    # Cell 12: Export policy to NumPy
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "progress['stage']='export'; save_progress()\n",
-            "\n",
-            "# Choose best model\n",
-            "ppo_ckpt = OUTPUT_DIR/'best_checkpoint_by_soups.pt'\n",
-            "if ppo_ckpt.exists():\n",
-            "    ck = torch.load(ppo_ckpt, map_location=DEVICE, weights_only=False)\n",
-            "    ppo_model.load_state_dict(ck['model_state_dict']); ppo_model.eval()\n",
-            "    export_model = ppo_model\n",
-            "    print(f'Using PPO model. step={ck[\"step\"]}, soups={ck[\"mean_soups\"]:.3f}')\n",
-            "    params = {}\n",
-            "    for n,p in ppo_model.actor_encoder.named_parameters(): params[f'actor_encoder.{n}']=p.detach().cpu().numpy()\n",
-            "    for n,p in ppo_model.actor_head.named_parameters(): params[f'actor_head.{n}']=p.detach().cpu().numpy()\n",
-            "else:\n",
-            "    print('Using BC model (PPO not run)')\n",
-            "    bc_model.eval()\n",
-            "    params = {}\n",
-            "    for n,p in bc_model.encoder.named_parameters(): params[f'actor_encoder.{n}']=p.detach().cpu().numpy()\n",
-            "    for n,p in bc_model.actor_head.named_parameters(): params[f'actor_head.{n}']=p.detach().cpu().numpy()\n",
-            "\n",
-            "np.savez_compressed(OUTPUT_DIR/'final_policy.npz', **params)\n",
-            "print('Saved final_policy.npz. Keys:', list(params.keys())[:5],'...')\n",
-            "\n",
-            "cfg = {'option':'B','model_type':'fcp_ppo_mlp' if ppo_ckpt.exists() else 'bc_warmstart_mlp',\n",
-            "       'obs_dim':OBS_DIM,'k_stack':K_STACK,'num_actions':6,'hidden_sizes':list(HS),\n",
-            "       'normalization_path':'artifacts/shared/normalization.json',\n",
-            "       'agent_index_encoding':'one_hot','previous_action':True,'obs_stack_k':K_STACK}\n",
-            "(OUTPUT_DIR/'final_policy_config.json').write_text(json.dumps(cfg,indent=2))\n",
-            "print('Saved final_policy_config.json')\n",
-            "progress['artifacts'].extend(['final_policy.npz','final_policy_config.json']); save_progress()\n"
-        ]
-    })
-    
-    # Cell 13: NumPy Parity Check
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "exported = np.load(OUTPUT_DIR/'final_policy.npz')\n",
-            "\n",
-            "def ln_np(x, w, b, eps=1e-5):\n",
-            "    m=x.mean(-1,keepdims=True); v=x.var(-1,keepdims=True)\n",
-            "    return (x-m)/np.sqrt(v+eps)*w+b\n",
-            "\n",
-            "def np_forward(st, ai, pa):\n",
-            "    ah=np.zeros(2,np.float32); ah[ai]=1.\n",
-            "    ph=np.zeros(6,np.float32); ph[pa]=1.\n",
-            "    x=np.concatenate([st.flatten(),ah,ph])\n",
-            "    li=0\n",
-            "    num_layers = len(HS)\n",
-            "    for i in range(num_layers):\n",
-            "        is_last = (i == num_layers - 1)\n",
-            "        W=exported[f'actor_encoder.net.{li}.weight']; b=exported[f'actor_encoder.net.{li}.bias']\n",
-            "        x=x@W.T+b; li+=1\n",
-            "        if not is_last:\n",
-            "            x=ln_np(x,exported[f'actor_encoder.net.{li}.weight'],exported[f'actor_encoder.net.{li}.bias']); li+=1\n",
-            "            x=np.maximum(0.,x); li+=1; li+=1  # ReLU + Dropout skip\n",
-            "    return x@exported['actor_head.weight'].T+exported['actor_head.bias']\n",
-            "\n",
-            "max_err=0; match_=0; N=10\n",
-            "for _ in range(N):\n",
-            "    ts=np.random.randn(K_STACK*OBS_DIM).astype(np.float32)\n",
-            "    tai=np.random.randint(0,2); tpa=np.random.randint(0,6)\n",
-            "    with torch.no_grad():\n",
-            "        if PPO_ENV_OK and ppo_ckpt.exists():\n",
-            "            pt_l=ppo_model.actor_logits(torch.from_numpy(ts).unsqueeze(0).to(DEVICE),\n",
-            "                                        torch.tensor([tai],device=DEVICE),\n",
-            "                                        torch.tensor([tpa],device=DEVICE)).cpu().numpy()[0]\n",
-            "        else:\n",
-            "            pt_l=bc_model(torch.from_numpy(ts).unsqueeze(0).to(DEVICE),\n",
-            "                          torch.tensor([tai],device=DEVICE),\n",
-            "                          torch.tensor([tpa],device=DEVICE)).cpu().numpy()[0]\n",
-            "    np_l=np_forward(ts,tai,tpa)\n",
-            "    err=np.abs(pt_l-np_l).max(); max_err=max(max_err,err)\n",
-            "    if np.argmax(pt_l)==np.argmax(np_l): match_+=1\n",
-            "\n",
-            "print(f'Parity: max_err={max_err:.2e}, action_match={match_}/{N}')\n",
-            "ok=max_err<=1e-4 and match_==N\n",
-            "(OUTPUT_DIR/'parity_check.json').write_text(json.dumps({'max_abs_error':float(max_err),'match_rate':match_/N,'parity_ok':ok},indent=2))\n",
-            "progress['parity_ok']=ok; save_progress()\n",
-            "print('Parity OK:', ok)\n"
-        ]
-    })
-    
-    # Cell 14: Evaluation Matrix
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "eval_results = []\n",
-            "if PPO_ENV_OK:\n",
-            "    progress['stage']='evaluation'; save_progress()\n",
-            "    \n",
-            "    # Define helper inside the cell to make it completely self-contained\n",
-            "    def make_stack(dq, k=4):\n",
-            "        return np.concatenate(list(dq)).astype(np.float32)\n",
-            "        \n",
-            "    EVAL_L=['cramped_room','coordination_ring','forced_coordination']\n",
-            "    EVAL_P=['stay','random','greedy']\n",
-            "    EVAL_S=[42,43,44]; EVAL_R=[0,1]\n",
-            "    eval_model = ppo_model if ppo_ckpt.exists() else bc_model\n",
-            "\n",
-            "    for lay in EVAL_L:\n",
-            "        for pt in EVAL_P:\n",
-            "            for sd in EVAL_S:\n",
-            "                for role in EVAL_R:\n",
-            "                    try:\n",
-            "                        ev=build_env(lay,sd); par=make_partner(pt,ev,sd)\n",
-            "                        ev.reset(regen_mdp=False); st=ev.state\n",
-            "                        dq2=deque([np.zeros(OBS_DIM,np.float32)]*K_STACK,maxlen=K_STACK)\n",
-            "                        dq2.append((featurize(ev,st,role)-NORM_MEAN)/NORM_STD)\n",
-            "                        pa2=0; ep_r2=0.; ep_s2=0.; done2=False; ts2=0; fst=None; lst=None\n",
-            "                        while not done2:\n",
-            "                            with torch.no_grad():\n",
-            "                                if hasattr(eval_model,'actor_logits'):\n",
-            "                                    lg=eval_model.actor_logits(torch.from_numpy(make_stack(dq2,K_STACK)).unsqueeze(0).to(DEVICE),torch.tensor([role],device=DEVICE),torch.tensor([pa2],device=DEVICE))\n",
-            "                                else:\n",
-            "                                    lg=eval_model(torch.from_numpy(make_stack(dq2,K_STACK)).unsqueeze(0).to(DEVICE),torch.tensor([role],device=DEVICE),torch.tensor([pa2],device=DEVICE))\n",
-            "                                ac2=int(lg.argmax(-1).item())\n",
-            "                            ea=Action.INDEX_TO_ACTION[ac2]\n",
-            "                            par.set_agent_index(1-role); par.set_mdp(ev.mdp)\n",
-            "                            pa_a2,_=par.action(st)\n",
-            "                            ja2=[ea,pa_a2] if role==0 else [pa_a2,ea]\n",
-            "                            nst,rw,done2,_=ev.step(ja2)\n",
-            "                            ep_r2+=float(rw)\n",
-            "                            if rw>0:\n",
-            "                                ep_s2+=float(rw)/20.\n",
-            "                                if fst is None: fst=ts2\n",
-            "                                lst=ts2\n",
-            "                            pa2=ac2; st=nst; dq2.append((featurize(ev,st,role)-NORM_MEAN)/NORM_STD); ts2+=1\n",
-            "                        sc=10000*ep_s2+(10*(HORIZON-lst)+HORIZON-fst if ep_s2>0 else 0)\n",
-            "                        eval_results.append({'layout':lay,'partner':pt,'seed':sd,'role':role,\n",
-            "                                             'soups':ep_s2,'sparse_return':ep_r2,'official_score':sc})\n",
-            "                        print(f'  {lay}+{pt} s={sd} r={role}: soups={ep_s2:.1f}')\n",
-            "                    except Exception as e: print(f'  Error {lay}+{pt}: {e}')\n",
-            "\n",
-            "    if eval_results:\n",
-            "        with open(OUTPUT_DIR/'option_b_evaluation.csv','w',newline='') as f:\n",
-            "            w=csv.DictWriter(f,fieldnames=list(eval_results[0].keys())); w.writeheader(); w.writerows(eval_results)\n",
-            "        ms=np.mean([r['soups'] for r in eval_results]); zs=np.mean([r['soups']<.5 for r in eval_results])\n",
-            "        print(f'Eval: mean_soups={ms:.3f}, zero_soup_rate={zs:.3f}')\n",
-            "        (OUTPUT_DIR/'eval_summary.json').write_text(json.dumps({'mean_soups':float(ms),'zero_soup_rate':float(zs),'n_eps':len(eval_results)},indent=2))\n",
-            "        progress['eval_summary']={'mean_soups':float(ms),'zero_soup_rate':float(zs)}\n",
-            "    progress['artifacts'].extend(['option_b_evaluation.csv','eval_summary.json']); save_progress()\n",
-            "else:\n",
-            "    print('Skipping evaluation (no overcooked env)')\n"
-        ]
-    })
-    
-    # Cell 15: Write Final Outputs
-    cells.append({
-        "cell_type": "code",
-        "metadata": {},
-        "outputs": [],
-        "execution_count": None,
-        "source": [
-            "try:\n",
-            "    # Partner pool manifest\n",
-            "    pm={'partners':[{'id':'stay'},{'id':'random'},{'id':'greedy'},{'id':'greedy10','noise':0.1},{'id':'greedy25','noise':0.25},{'id':'greedy40','noise':0.4}]}\n",
-            "    (OUTPUT_DIR/'partner_pool_manifest.json').write_text(json.dumps(pm,indent=2))\n",
-            "\n",
-            "    # Final artifact list\n",
-            "    print('Output files:')\n",
-            "    for f in sorted(OUTPUT_DIR.iterdir()):\n",
-            "        if f.is_file(): print(f'  {f.name}: {f.stat().st_size/1024:.1f} KB')\n",
-            "\n",
-            "    progress['status']='complete'; progress['stage']='done'\n",
-            "    progress['artifacts'].append('partner_pool_manifest.json'); save_progress()\n",
-            "    print('=== All done! ===')\n",
-            "except Exception as e:\n",
-            "    progress['status']='failed'; progress['error']=repr(e); save_progress()\n",
-            "    import traceback; traceback.print_exc()\n"
-        ]
-    })
-    
-    # Write to file
-    nb_path = pathlib.Path("kaggle/v1/input/main.ipynb")
-    nb_path.parent.mkdir(parents=True, exist_ok=True)
-    
+        "source": textwrap.dedent(source).strip().splitlines(True),
+    }
+
+
+def build() -> None:
+    cfg = yaml.safe_load((ROOT / "configs" / "train_option_b.yaml").read_text(encoding="utf-8"))
+    catalog = build_layout_catalog(ROOT / "data")
+    for spec in catalog["specs"]:
+        spec.pop("example_paths", None)
+    catalog["data_root"] = "data"
+    cfg_json = json.dumps(cfg, indent=2, sort_keys=True)
+    catalog_json = json.dumps(catalog, indent=2, sort_keys=True)
+
+    cells = [
+        md(
+            """
+            # Option B: BC-Warmstarted FCP-style PPO with BC Clones
+
+            PPO trains against neural BC clones and frozen PPO snapshots, with tomato layouts enabled.
+            """
+        ),
+        code(
+            f"""
+            import csv, copy, json, pathlib, subprocess, time, traceback, zipfile
+            from collections import deque
+            import numpy as np
+            import torch
+            import torch.nn as nn
+            import torch.nn.functional as F
+            import torch.optim as optim
+            from torch.utils.data import Dataset, DataLoader
+
+            TRAIN_CFG = json.loads({json.dumps(cfg_json)})
+            LAYOUT_CATALOG = json.loads({json.dumps(catalog_json)})
+            OUTPUT_DIR = pathlib.Path('/kaggle/working')
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            progress = {{'status': 'running', 'stage': 'init', 'artifacts': []}}
+
+            def save_progress():
+                (OUTPUT_DIR / 'run_summary.json').write_text(json.dumps(progress, indent=2), encoding='utf-8')
+
+            save_progress()
+            print(f'Device: {{DEVICE}}')
+            if torch.cuda.is_available():
+                print(f'GPU: {{torch.cuda.get_device_name(0)}}')
+            print('Config total_steps:', TRAIN_CFG['ppo']['total_steps'])
+            print('Catalog layouts:', LAYOUT_CATALOG['layout_count'], 'weights:', LAYOUT_CATALOG['weight_sum'])
+            """
+        ),
+        md("## Instalar Overcooked-AI"),
+        code(
+            """
+            progress['stage'] = 'install_overcooked'; save_progress()
+
+            def run_cmd(cmd):
+                r = subprocess.run(cmd, capture_output=True, text=True)
+                if r.returncode != 0:
+                    print('CMD failed:', ' '.join(cmd))
+                    if r.stdout: print(r.stdout[-500:])
+                    if r.stderr: print(r.stderr[-500:])
+                return r.returncode == 0
+
+            OVERCOOKED_INSTALLED = False
+            for cmd in [
+                ['pip', 'install', 'overcooked-ai', '--no-deps', '-q'],
+                ['pip', 'install', 'git+https://github.com/HumanCompatibleAI/overcooked_ai.git', '--no-deps', '-q'],
+            ]:
+                if run_cmd(cmd):
+                    run_cmd(['pip', 'install', 'PyYAML>=6.0', 'scipy', 'dill', 'flask', '-q'])
+                    try:
+                        np.Inf = np.inf
+                        from overcooked_ai_py.mdp.actions import Action, Direction
+                        from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
+                        from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, Recipe
+                        OVERCOOKED_INSTALLED = True
+                        break
+                    except Exception as exc:
+                        print('Overcooked import failed:', repr(exc))
+
+            progress['overcooked_available'] = OVERCOOKED_INSTALLED
+            save_progress()
+            print('OVERCOOKED_INSTALLED:', OVERCOOKED_INSTALLED)
+            """
+        ),
+        md("## Cargar demostraciones"),
+        code(
+            """
+            progress['stage'] = 'load_data'; save_progress()
+
+            for zip_path in pathlib.Path('/kaggle/input').rglob('*.zip'):
+                print('Extracting:', zip_path)
+                with zipfile.ZipFile(zip_path, 'r') as zf:
+                    zf.extractall('/kaggle/working')
+
+            candidates = [pathlib.Path('/kaggle/working/data'), pathlib.Path('/kaggle/working')]
+            candidates += [p for p in pathlib.Path('/kaggle/input').glob('*') if p.is_dir()]
+            DATA_DIR, npz_files = None, []
+            for p in candidates:
+                if p.exists():
+                    found = sorted(p.rglob('*.npz'))
+                    print(f'{p}: {len(found)} npz')
+                    if len(found) > len(npz_files):
+                        DATA_DIR, npz_files = p, found
+            if not npz_files:
+                raise FileNotFoundError('No .npz demonstration files found in Kaggle inputs')
+
+            OBS_DIM = int(np.load(npz_files[0], allow_pickle=True)['obs'].shape[1])
+            print('Using DATA_DIR:', DATA_DIR)
+            print('Distinct npz paths:', len(npz_files), 'OBS_DIM:', OBS_DIM)
+
+            def quality_tier(rewards, actions):
+                deliveries = int((rewards > 0).sum())
+                stay = float((actions == 4).mean()) if len(actions) else 1.0
+                max_run = cur = 1
+                for i in range(1, len(actions)):
+                    cur = cur + 1 if actions[i] == actions[i - 1] else 1
+                    max_run = max(max_run, cur)
+                if deliveries >= 2: return 'A', 1.5
+                if deliveries >= 1: return 'B', 1.0
+                if int((actions == 5).sum()) > 5 and stay < 0.8 and max_run < 50: return 'C', 0.1
+                if stay > 0.9 or max_run > 100: return 'D', 0.0
+                return 'C', 0.4
+
+            def load_episodes(files):
+                episodes = []
+                bad = 0
+                for fp in sorted(files):
+                    try:
+                        d = np.load(fp, allow_pickle=True)
+                        obs = d['obs'].astype(np.float32)
+                        actions = d['actions'].astype(np.int64)
+                        rewards = d.get('rewards', np.zeros(len(actions), dtype=np.float32)).astype(np.float32)
+                        epids = d.get('episode_ids', np.zeros(len(obs), dtype=int))
+                        agent_idxs = d.get('agent_indices', np.zeros(len(obs), dtype=int))
+                        for eid in np.unique(epids):
+                            mask = epids == eid
+                            if int(mask.sum()) < 5:
+                                continue
+                            tier, weight = quality_tier(rewards[mask], actions[mask])
+                            if tier == 'D':
+                                continue
+                            episodes.append({
+                                'obs': obs[mask],
+                                'actions': actions[mask],
+                                'rewards': rewards[mask],
+                                'agent_index': int(agent_idxs[mask][0]) if agent_idxs[mask].size else 0,
+                                'quality_tier': tier,
+                                'quality_weight': weight,
+                                'deliveries': int((rewards[mask] > 0).sum()),
+                                'source_path': str(fp),
+                            })
+                    except Exception as exc:
+                        bad += 1
+                        print('Bad npz:', fp, repr(exc))
+                return episodes, bad
+
+            episodes, bad_files = load_episodes(npz_files)
+            if not episodes:
+                raise RuntimeError('No usable episodes after quality filtering')
+            tiers = {}
+            for ep in episodes:
+                tiers[ep['quality_tier']] = tiers.get(ep['quality_tier'], 0) + 1
+            print('Episodes:', len(episodes), 'bad_files:', bad_files, 'tiers:', tiers)
+
+            rng = np.random.default_rng(TRAIN_CFG['bc_warmstart']['seed'])
+            idx = rng.permutation(len(episodes)).tolist()
+            n_train = int(len(idx) * TRAIN_CFG['bc_warmstart']['train_frac'])
+            n_val = int(len(idx) * TRAIN_CFG['bc_warmstart']['val_frac'])
+            train_eps = [episodes[i] for i in idx[:n_train]]
+            val_eps = [episodes[i] for i in idx[n_train:n_train + n_val]]
+
+            all_train_obs = np.concatenate([e['obs'] for e in train_eps], axis=0)
+            NORM_MEAN = all_train_obs.mean(axis=0).astype(np.float32)
+            NORM_STD = np.maximum(all_train_obs.std(axis=0), 1e-8).astype(np.float32)
+            (OUTPUT_DIR / 'normalization.json').write_text(
+                json.dumps({'mean': NORM_MEAN.tolist(), 'std': NORM_STD.tolist()}, indent=2),
+                encoding='utf-8',
+            )
+            progress['artifacts'].append('normalization.json'); save_progress()
+            """
+        ),
+        md("## Modelo y dataloaders BC"),
+        code(
+            """
+            class MLP(nn.Module):
+                def __init__(self, layer_sizes, use_layer_norm=True, dropout=0.0):
+                    super().__init__()
+                    layers = []
+                    for i in range(len(layer_sizes) - 1):
+                        layers.append(nn.Linear(layer_sizes[i], layer_sizes[i + 1]))
+                        if i != len(layer_sizes) - 2:
+                            if use_layer_norm:
+                                layers.append(nn.LayerNorm(layer_sizes[i + 1]))
+                            layers.append(nn.ReLU())
+                            if dropout > 0:
+                                layers.append(nn.Dropout(dropout))
+                    self.net = nn.Sequential(*layers)
+                def forward(self, x):
+                    return self.net(x)
+
+            class BCWarmstartActor(nn.Module):
+                def __init__(self, obs_dim=96, k_stack=4, num_actions=6, hidden_sizes=(512, 256, 128), dropout=0.1):
+                    super().__init__()
+                    self.obs_dim = obs_dim; self.k_stack = k_stack; self.num_actions = num_actions
+                    input_dim = k_stack * obs_dim + 2 + num_actions
+                    self.encoder = MLP([input_dim] + list(hidden_sizes), dropout=dropout)
+                    self.actor_head = nn.Linear(hidden_sizes[-1], num_actions)
+                    for m in self.modules():
+                        if isinstance(m, nn.Linear):
+                            nn.init.orthogonal_(m.weight); nn.init.zeros_(m.bias)
+                    nn.init.orthogonal_(self.actor_head.weight, gain=0.01)
+                def forward(self, stack_obs, agent_index, prev_action):
+                    ah = F.one_hot(agent_index.long(), 2).float()
+                    ph = F.one_hot(prev_action.long(), self.num_actions).float()
+                    return self.actor_head(self.encoder(torch.cat([stack_obs, ah, ph], dim=-1)))
+
+            class ActorCritic(nn.Module):
+                def __init__(self, obs_dim=96, k_stack=4, num_actions=6, hidden_sizes=(512, 256, 128), dropout=0.05):
+                    super().__init__()
+                    self.obs_dim = obs_dim; self.k_stack = k_stack; self.num_actions = num_actions
+                    input_dim = k_stack * obs_dim + 2 + num_actions
+                    layers = [input_dim] + list(hidden_sizes)
+                    self.actor_encoder = MLP(layers, dropout=dropout)
+                    self.actor_head = nn.Linear(hidden_sizes[-1], num_actions)
+                    self.critic_encoder = MLP(layers, dropout=dropout)
+                    self.critic_head = nn.Linear(hidden_sizes[-1], 1)
+                    for m in self.modules():
+                        if isinstance(m, nn.Linear):
+                            nn.init.orthogonal_(m.weight); nn.init.zeros_(m.bias)
+                    nn.init.orthogonal_(self.actor_head.weight, gain=0.01)
+                def _input(self, stack_obs, agent_index, prev_action):
+                    return torch.cat([
+                        stack_obs,
+                        F.one_hot(agent_index.long(), 2).float(),
+                        F.one_hot(prev_action.long(), self.num_actions).float(),
+                    ], dim=-1)
+                def actor_logits(self, stack_obs, agent_index, prev_action):
+                    return self.actor_head(self.actor_encoder(self._input(stack_obs, agent_index, prev_action)))
+                def forward(self, stack_obs, agent_index, prev_action):
+                    x = self._input(stack_obs, agent_index, prev_action)
+                    return self.actor_head(self.actor_encoder(x)), self.critic_head(self.critic_encoder(x)).squeeze(-1)
+                def load_from_bc(self, bc):
+                    self.actor_encoder.load_state_dict(bc.encoder.state_dict())
+                    self.actor_head.load_state_dict(bc.actor_head.state_dict())
+
+            K_STACK = int(TRAIN_CFG['bc_warmstart']['k_stack'])
+            HS = tuple(TRAIN_CFG['bc_warmstart']['hidden_sizes'])
+
+            class BCDataset(Dataset):
+                def __init__(self, eps, mean, std, k_stack=4):
+                    self.samples = []
+                    all_actions = np.concatenate([e['actions'] for e in eps])
+                    counts = np.maximum(np.bincount(all_actions, minlength=6).astype(float), 1.0)
+                    action_w = np.clip((counts.sum() / (6 * counts)) / (counts.sum() / (6 * counts)).mean(), 0.5, 3.0)
+                    for ep in eps:
+                        obs = (ep['obs'] - mean) / std
+                        actions = ep['actions']; ai = int(ep['agent_index']); qw = float(ep['quality_weight'])
+                        for t in range(len(actions)):
+                            frames = [obs[max(0, t - j)] for j in range(k_stack - 1, -1, -1)]
+                            target = int(actions[t])
+                            prev = int(actions[t - 1]) if t > 0 else 0
+                            weight = float(np.clip(qw * action_w[target], 0.05, 5.0))
+                            self.samples.append((np.concatenate(frames).astype(np.float32), ai, prev, target, weight))
+                def __len__(self): return len(self.samples)
+                def __getitem__(self, i):
+                    st, ai, prev, target, weight = self.samples[i]
+                    return (
+                        torch.from_numpy(st),
+                        torch.tensor(ai, dtype=torch.long),
+                        torch.tensor(prev, dtype=torch.long),
+                        torch.tensor(target, dtype=torch.long),
+                        torch.tensor(weight, dtype=torch.float32),
+                    )
+
+            train_ds = BCDataset(train_eps, NORM_MEAN, NORM_STD, K_STACK)
+            val_ds = BCDataset(val_eps, NORM_MEAN, NORM_STD, K_STACK)
+            batch = int(TRAIN_CFG['bc_warmstart']['batch_size'])
+            train_dl = DataLoader(train_ds, batch_size=batch, shuffle=True, num_workers=2, pin_memory=True, drop_last=True)
+            val_dl = DataLoader(val_ds, batch_size=batch, shuffle=False, num_workers=2, pin_memory=True)
+            print('BC samples:', len(train_ds), 'val:', len(val_ds))
+            """
+        ),
+        md("## Entrenar BC warm-start"),
+        code(
+            """
+            progress['stage'] = 'bc_warmstart'; save_progress()
+            bc_cfg = TRAIN_CFG['bc_warmstart']
+            bc_model = BCWarmstartActor(OBS_DIM, K_STACK, 6, HS, dropout=float(bc_cfg['dropout'])).to(DEVICE)
+            opt_bc = optim.Adam(bc_model.parameters(), lr=float(bc_cfg['lr']), weight_decay=float(bc_cfg['weight_decay']))
+            sched = optim.lr_scheduler.CosineAnnealingLR(opt_bc, T_max=int(bc_cfg['epochs']), eta_min=1e-5)
+            best_val = float('inf'); patience = 0; history = []
+
+            for epoch in range(1, int(bc_cfg['epochs']) + 1):
+                t0 = time.time()
+                bc_model.train(); tr_loss = tr_ok = tr_n = 0
+                for st, ai, prev, target, weight in train_dl:
+                    st, ai, prev, target, weight = st.to(DEVICE), ai.to(DEVICE), prev.to(DEVICE), target.to(DEVICE), weight.to(DEVICE)
+                    logits = bc_model(st, ai, prev)
+                    ce = F.cross_entropy(logits, target, reduction='none', label_smoothing=float(bc_cfg['label_smoothing']))
+                    loss = (ce * weight).sum() / weight.sum().clamp(1.0)
+                    opt_bc.zero_grad(); loss.backward()
+                    nn.utils.clip_grad_norm_(bc_model.parameters(), 1.0)
+                    opt_bc.step()
+                    tr_loss += loss.item() * len(target); tr_ok += int((logits.argmax(-1) == target).sum()); tr_n += len(target)
+                sched.step()
+
+                bc_model.eval(); vl_loss = vl_ok = vl_n = 0
+                with torch.no_grad():
+                    for st, ai, prev, target, weight in val_dl:
+                        st, ai, prev, target, weight = st.to(DEVICE), ai.to(DEVICE), prev.to(DEVICE), target.to(DEVICE), weight.to(DEVICE)
+                        logits = bc_model(st, ai, prev)
+                        ce = F.cross_entropy(logits, target, reduction='none')
+                        loss = (ce * weight).sum() / weight.sum().clamp(1.0)
+                        vl_loss += loss.item() * len(target); vl_ok += int((logits.argmax(-1) == target).sum()); vl_n += len(target)
+
+                row = {
+                    'epoch': epoch,
+                    'train_loss': tr_loss / max(tr_n, 1),
+                    'train_acc': tr_ok / max(tr_n, 1),
+                    'val_loss': vl_loss / max(vl_n, 1),
+                    'val_acc': vl_ok / max(vl_n, 1),
+                    'elapsed_s': time.time() - t0,
+                }
+                history.append(row)
+                print(f"BC epoch {epoch:02d}: train={row['train_loss']:.4f} val={row['val_loss']:.4f} acc={row['val_acc']:.3f}")
+                if row['val_loss'] < best_val:
+                    best_val = row['val_loss']; patience = 0
+                    torch.save({
+                        'model_state_dict': bc_model.state_dict(),
+                        'obs_dim': OBS_DIM,
+                        'k_stack': K_STACK,
+                        'hidden_sizes': list(HS),
+                        'val_loss': best_val,
+                    }, OUTPUT_DIR / 'bc_warmstart.pt')
+                else:
+                    patience += 1
+                    if patience >= int(bc_cfg['patience']):
+                        print('BC early stop')
+                        break
+
+            with open(OUTPUT_DIR / 'option_b_bc_training.csv', 'w', newline='') as f:
+                w = csv.DictWriter(f, fieldnames=list(history[0].keys()))
+                w.writeheader(); w.writerows(history)
+            ck = torch.load(OUTPUT_DIR / 'bc_warmstart.pt', map_location=DEVICE, weights_only=False)
+            bc_model.load_state_dict(ck['model_state_dict']); bc_model.eval()
+            progress['bc_val_loss'] = float(ck['val_loss'])
+            progress['artifacts'].extend(['bc_warmstart.pt', 'option_b_bc_training.csv'])
+            save_progress()
+            """
+        ),
+        md("## Preparar entornos y partners neuronales"),
+        code(
+            """
+            progress['stage'] = 'ppo_env_preflight'; save_progress()
+            PPO_ENV_OK = bool(OVERCOOKED_INSTALLED)
+
+            def clean_grid(grid):
+                rows = [r.rstrip('\\n') for r in str(grid).split('\\n')]
+                rows = [r.strip() for r in rows if r.strip()]
+                if not rows:
+                    raise ValueError('empty layout grid')
+                if len({len(r) for r in rows}) != 1:
+                    raise ValueError('layout rows must have equal width')
+                return rows
+
+            def build_mdp_from_spec(spec):
+                if spec['type'] == 'custom':
+                    params = dict(spec['custom_layout_dict'])
+                    grid = clean_grid(params.pop('grid'))
+                    params.setdefault('layout_name', spec['layout_name'])
+                    return OvercookedGridworld.from_grid(
+                        layout_grid=grid,
+                        base_layout_params=params,
+                        params_to_overwrite={'old_dynamics': True},
+                    )
+                return OvercookedGridworld.from_layout_name(spec['layout_name'], old_dynamics=True)
+
+            def build_env_from_spec(spec):
+                return OvercookedEnv.from_mdp(build_mdp_from_spec(spec), horizon=int(spec.get('horizon') or 250), info_level=0)
+
+            class NeuralPartner:
+                def __init__(self, model, mean, std, env, agent_index=1, temperature=1.0, seed=42):
+                    self.model = model
+                    self.model.eval()
+                    self.mean = mean; self.std = std; self.env = env
+                    self.agent_index = int(agent_index)
+                    self.temperature = max(float(temperature), 1e-6)
+                    self.rng = np.random.default_rng(seed)
+                    self.reset()
+                def reset(self):
+                    self.prev_action = 0
+                    self.stack = deque([np.zeros(OBS_DIM, np.float32)] * K_STACK, maxlen=K_STACK)
+                def set_agent_index(self, agent_index):
+                    if int(agent_index) != self.agent_index:
+                        self.agent_index = int(agent_index)
+                        self.reset()
+                def set_env(self, env):
+                    if env is not self.env:
+                        self.env = env
+                        self.reset()
+                def set_mdp(self, mdp):
+                    self.mdp = mdp
+                def action(self, state):
+                    obs = self.env.featurize_state_mdp(state)[self.agent_index].astype(np.float32)
+                    self.stack.append((obs - self.mean) / self.std)
+                    st = np.concatenate(list(self.stack)).astype(np.float32)
+                    with torch.no_grad():
+                        out = self.model(
+                            torch.from_numpy(st).unsqueeze(0).to(DEVICE),
+                            torch.tensor([self.agent_index], dtype=torch.long, device=DEVICE),
+                            torch.tensor([self.prev_action], dtype=torch.long, device=DEVICE),
+                        )
+                        logits = out[0] if isinstance(out, tuple) else out
+                        probs = torch.softmax(logits[0] / self.temperature, dim=-1).cpu().numpy()
+                    ai = int(self.rng.choice(len(probs), p=probs))
+                    self.prev_action = ai
+                    return Action.INDEX_TO_ACTION[ai], {}
+
+            class ScriptedGreedyPartner:
+                def __init__(self, env, agent_index=1, ingredient='onion', mode='balanced', seed=42):
+                    self.env = env
+                    self.mdp = env.mdp
+                    self.agent_index = int(agent_index)
+                    self.ingredient = ingredient if ingredient in {'onion', 'tomato'} else 'onion'
+                    self.mode = mode if mode in {'balanced', 'runner', 'server'} else 'balanced'
+                def reset(self):
+                    pass
+                def set_agent_index(self, agent_index):
+                    self.agent_index = int(agent_index)
+                def set_env(self, env):
+                    self.env = env
+                    self.mdp = env.mdp
+                def set_mdp(self, mdp):
+                    self.mdp = mdp
+                def action(self, state):
+                    try:
+                        target = self._target(state)
+                        if target is None:
+                            return Action.STAY, {'policy_name': 'scripted_greedy', 'mode': self.mode, 'target': None}
+                        return self._move_or_interact(state, target), {'policy_name': 'scripted_greedy', 'mode': self.mode, 'target': target}
+                    except Exception as exc:
+                        return Action.STAY, {'policy_name': 'scripted_greedy', 'mode': self.mode, 'fallback': True, 'error': repr(exc)}
+                def _target(self, state):
+                    p = state.players[self.agent_index]
+                    held = p.held_object
+                    pot_states = self.mdp.get_pot_states(state)
+                    if held is not None:
+                        if held.name == 'soup':
+                            return self._nearest(p.position, self.mdp.get_serving_locations())
+                        if held.name == 'dish':
+                            ready = list(pot_states.get('ready', []))
+                            if ready:
+                                return self._nearest(p.position, ready)
+                            waiting = list(pot_states.get('cooking', [])) + list(pot_states.get(f'{Recipe.MAX_NUM_INGREDIENTS}_items', []))
+                            return self._nearest(p.position, waiting)
+                        if held.name in {'onion', 'tomato'}:
+                            return self._nearest(p.position, self._pots_accepting(pot_states))
+                        return None
+                    ready = list(pot_states.get('ready', []))
+                    if self.mode == 'server':
+                        if ready:
+                            counter_dishes = self._counter_objects(state, 'dish')
+                            return self._nearest(p.position, counter_dishes or self.mdp.get_dish_dispenser_locations())
+                        waiting = list(pot_states.get('cooking', [])) + list(pot_states.get(f'{Recipe.MAX_NUM_INGREDIENTS}_items', []))
+                        if waiting:
+                            return self._nearest(p.position, self.mdp.get_dish_dispenser_locations())
+                        pots = self._pots_accepting(pot_states)
+                        if pots:
+                            counter_ingredients = self._counter_objects(state, self.ingredient)
+                            return self._nearest(p.position, counter_ingredients or self._ingredient_locations())
+                        return None
+                    if self.mode == 'runner':
+                        pots = self._pots_accepting(pot_states)
+                        if pots:
+                            counter_ingredients = self._counter_objects(state, self.ingredient)
+                            return self._nearest(p.position, counter_ingredients or self._ingredient_locations())
+                        if ready:
+                            return self._nearest(p.position, self.mdp.get_dish_dispenser_locations())
+                        full = list(pot_states.get(f'{Recipe.MAX_NUM_INGREDIENTS}_items', []))
+                        if full:
+                            return self._nearest(p.position, full)
+                        cooking = list(pot_states.get('cooking', []))
+                        if cooking:
+                            return self._nearest(p.position, self.mdp.get_dish_dispenser_locations())
+                        return None
+                    if ready:
+                        counter_dishes = self._counter_objects(state, 'dish')
+                        return self._nearest(p.position, counter_dishes or self.mdp.get_dish_dispenser_locations())
+                    pots = self._pots_accepting(pot_states)
+                    if pots:
+                        counter_ingredients = self._counter_objects(state, self.ingredient)
+                        return self._nearest(p.position, counter_ingredients or self._ingredient_locations())
+                    full = list(pot_states.get(f'{Recipe.MAX_NUM_INGREDIENTS}_items', []))
+                    if full:
+                        return self._nearest(p.position, full)
+                    cooking = list(pot_states.get('cooking', []))
+                    if cooking:
+                        return self._nearest(p.position, self.mdp.get_dish_dispenser_locations())
+                    return None
+                def _ingredient_locations(self):
+                    locs = self.mdp.get_tomato_dispenser_locations() if self.ingredient == 'tomato' else self.mdp.get_onion_dispenser_locations()
+                    return list(locs)
+                def _pots_accepting(self, pot_states):
+                    pots = list(pot_states.get('empty', []))
+                    for k in range(1, Recipe.MAX_NUM_INGREDIENTS):
+                        pots.extend(list(pot_states.get(f'{k}_items', [])))
+                    return pots
+                def _counter_objects(self, state, name):
+                    return [obj.position for obj in state.objects.values() if obj.name == name]
+                def _move_or_interact(self, state, target):
+                    p = state.players[self.agent_index]
+                    if self._adjacent(p.position, target):
+                        direction = self._direction(p.position, target)
+                        return Action.INTERACT if p.orientation == direction else direction
+                    nxt = self._next_step(state, target)
+                    if nxt is None:
+                        return Action.STAY
+                    return Action.determine_action_for_change_in_pos(p.position, nxt)
+                def _next_step(self, state, target):
+                    start = state.players[self.agent_index].position
+                    valid = set(self.mdp.get_valid_player_positions())
+                    blocked = {pl.position for i, pl in enumerate(state.players) if i != self.agent_index}
+                    goals = [p for p in self._adjacent_positions(target) if p in valid and p not in blocked]
+                    if not goals:
+                        goals = [p for p in self._adjacent_positions(target) if p in valid]
+                    if not goals:
+                        return None
+                    queue = deque([(start, [start])])
+                    seen = {start}
+                    while queue:
+                        pos, path = queue.popleft()
+                        if pos in goals:
+                            return path[1] if len(path) > 1 else None
+                        for d in Direction.ALL_DIRECTIONS:
+                            nxt = Action.move_in_direction(pos, d)
+                            if nxt not in valid or (nxt in blocked and nxt not in goals) or nxt in seen:
+                                continue
+                            seen.add(nxt)
+                            queue.append((nxt, path + [nxt]))
+                    return None
+                def _nearest(self, origin, positions):
+                    positions = list(positions)
+                    if not positions:
+                        return None
+                    return min(positions, key=lambda p: abs(p[0] - origin[0]) + abs(p[1] - origin[1]))
+                def _adjacent_positions(self, pos):
+                    return [Action.move_in_direction(pos, d) for d in Direction.ALL_DIRECTIONS]
+                def _adjacent(self, a, b):
+                    return abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1
+                def _direction(self, a, b):
+                    direction = (b[0] - a[0], b[1] - a[1])
+                    if direction not in Direction.ALL_DIRECTIONS:
+                        raise ValueError(f'not adjacent: {a}->{b}')
+                    return direction
+
+            def time_limit(seconds):
+                try:
+                    import contextlib, signal
+                    @contextlib.contextmanager
+                    def _ctx():
+                        def handler(signum, frame):
+                            raise TimeoutError(f'layout preflight timed out after {seconds}s')
+                        old = signal.signal(signal.SIGALRM, handler)
+                        signal.alarm(int(seconds))
+                        try:
+                            yield
+                        finally:
+                            signal.alarm(0)
+                            signal.signal(signal.SIGALRM, old)
+                    return _ctx()
+                except Exception:
+                    import contextlib
+                    return contextlib.nullcontext()
+
+            layout_manifest = []
+            ENV_CACHE = {}
+            VALID_LAYOUTS = []
+            if PPO_ENV_OK:
+                timeout_s = int(TRAIN_CFG['ppo'].get('layout_preflight_timeout_s', 60))
+                for spec in LAYOUT_CATALOG['specs']:
+                    row = {k: spec.get(k) for k in ['id', 'type', 'layout_name', 'hash', 'weight', 'horizon', 'example_paths']}
+                    try:
+                        with time_limit(timeout_s):
+                            env = build_env_from_spec(spec)
+                            env.reset(regen_mdp=False)
+                            obs = env.featurize_state_mdp(env.state)
+                            if len(obs) != 2 or int(obs[0].shape[0]) != OBS_DIM:
+                                raise ValueError(f'obs shape mismatch: {[getattr(o, "shape", None) for o in obs]}')
+                            env.step([Action.STAY, Action.STAY])
+                        ENV_CACHE[spec['id']] = env
+                        VALID_LAYOUTS.append(spec)
+                        row['status'] = 'ok'
+                    except Exception as exc:
+                        row['status'] = 'excluded'
+                        row['error'] = repr(exc)
+                    layout_manifest.append(row)
+                PPO_ENV_OK = len(VALID_LAYOUTS) > 0
+
+            (OUTPUT_DIR / 'layout_manifest.json').write_text(json.dumps({
+                'catalog_layout_count': LAYOUT_CATALOG['layout_count'],
+                'catalog_weight_sum': LAYOUT_CATALOG['weight_sum'],
+                'valid_layout_count': len(VALID_LAYOUTS),
+                'layouts': layout_manifest,
+            }, indent=2), encoding='utf-8')
+            progress['ppo_env_ok'] = PPO_ENV_OK
+            progress['valid_layout_count'] = len(VALID_LAYOUTS)
+            progress['artifacts'].append('layout_manifest.json')
+            save_progress()
+            print('Valid PPO layouts:', len(VALID_LAYOUTS), 'of', LAYOUT_CATALOG['layout_count'])
+            """
+        ),
+        md("## PPO FCP contra BC clones e históricos"),
+        code(
+            """
+            progress['stage'] = 'ppo_train'; save_progress()
+            ppo_model = ActorCritic(OBS_DIM, K_STACK, 6, HS, dropout=0.05).to(DEVICE)
+            ppo_model.load_from_bc(bc_model)
+            opt_ppo = optim.Adam(ppo_model.parameters(), lr=float(TRAIN_CFG['ppo']['learning_rate']))
+            ppo_hist = []
+            partner_specs = [
+                {'id': f"bc_clone_t{str(t).replace('.', '_')}", 'type': 'bc_clone', 'temperature': float(t), 'model': bc_model, 'snapshot_step': None}
+                for t in TRAIN_CFG['ppo'].get('bc_partner_temperatures', [0.75, 1.0, 1.5])
+            ]
+            partner_specs.extend([
+                {'id': f'scripted_{mode}_{ing}', 'type': 'scripted_greedy', 'ingredient': ing, 'mode': mode, 'temperature': 1.0, 'model': None, 'snapshot_step': None}
+                for ing in TRAIN_CFG['ppo'].get('scripted_partner_ingredients', [])
+                for mode in TRAIN_CFG['ppo'].get('scripted_partner_modes', ['balanced'])
+            ])
+            PSCORES = {p['id']: [] for p in partner_specs}
+
+            def manifest_partners():
+                return [{k: v for k, v in p.items() if k != 'model'} for p in partner_specs]
+
+            def add_historical(step, score):
+                frozen = copy.deepcopy(ppo_model).to(DEVICE).eval()
+                for param in frozen.parameters():
+                    param.requires_grad_(False)
+                pid = f'historical_ppo_step{step}'
+                partner_specs.append({'id': pid, 'type': 'historical_ppo', 'temperature': 1.0, 'model': frozen, 'snapshot_step': int(step), 'mean_deliveries_at_add': float(score)})
+                PSCORES[pid] = []
+                torch.save({'step': int(step), 'model_state_dict': frozen.state_dict(), 'mean_deliveries': float(score)}, OUTPUT_DIR / f'ppo_partner_step{step}.pt')
+
+            def softmax_np(x):
+                x = np.asarray(x, dtype=np.float64); x = x - x.max()
+                e = np.exp(x)
+                return e / e.sum()
+
+            def sample_partner():
+                eps = float(TRAIN_CFG['ppo']['adaptive_epsilon'])
+                beta = float(TRAIN_CFG['ppo']['adaptive_beta'])
+                ids = [p['id'] for p in partner_specs]
+                avg = np.array([np.mean(PSCORES[i]) if PSCORES[i] else 0.5 for i in ids], dtype=np.float64)
+                if TRAIN_CFG['ppo']['partner_sampling'] == 'adaptive_cole' and len(ids) > 1:
+                    span = avg.max() - avg.min()
+                    norm = (avg - avg.min()) / span if span > 0 else np.ones_like(avg) * 0.5
+                    probs = (1 - eps) * softmax_np(-beta * norm) + eps / len(ids)
+                    probs = probs / probs.sum()
+                    idx = int(np.random.choice(len(ids), p=probs))
+                else:
+                    idx = int(np.random.randint(len(ids)))
+                return partner_specs[idx]
+
+            layout_weights = np.array([max(1, int(s.get('weight', 1))) for s in VALID_LAYOUTS], dtype=np.float64)
+            focus_ids = set(TRAIN_CFG['ppo'].get('layout_focus_ids', []))
+            if focus_ids:
+                focus_mult = float(TRAIN_CFG['ppo'].get('layout_focus_multiplier', 1.0))
+                for i, spec in enumerate(VALID_LAYOUTS):
+                    if spec['id'] in focus_ids:
+                        layout_weights[i] *= focus_mult
+            layout_probs = layout_weights / layout_weights.sum() if len(layout_weights) else np.array([])
+            LAYOUT_SCORES = {s['id']: [] for s in VALID_LAYOUTS}
+            def sample_layout_spec():
+                if TRAIN_CFG['ppo'].get('layout_sampling') == 'adaptive_coverage':
+                    beta = float(TRAIN_CFG['ppo'].get('layout_deficit_beta', 2.0))
+                    recent = np.array([
+                        np.mean(LAYOUT_SCORES[s['id']][-10:]) if LAYOUT_SCORES[s['id']] else 0.0
+                        for s in VALID_LAYOUTS
+                    ], dtype=np.float64)
+                    deficit = np.maximum(0.0, 3.0 - recent)
+                    probs = layout_weights * (1.0 + beta * deficit)
+                    probs = probs / probs.sum()
+                    return VALID_LAYOUTS[int(np.random.choice(len(VALID_LAYOUTS), p=probs))]
+                return VALID_LAYOUTS[int(np.random.choice(len(VALID_LAYOUTS), p=layout_probs))]
+
+            def featurize(env, state, role):
+                return env.featurize_state_mdp(state)[role].astype(np.float32)
+            def make_stack(dq):
+                return np.concatenate(list(dq)).astype(np.float32)
+            def make_partner(pspec, env, role, seed):
+                if pspec['type'] == 'scripted_greedy':
+                    return ScriptedGreedyPartner(env, agent_index=1 - role, ingredient=pspec.get('ingredient', 'onion'), mode=pspec.get('mode', 'balanced'), seed=seed)
+                return NeuralPartner(pspec['model'], NORM_MEAN, NORM_STD, env, agent_index=1 - role, temperature=pspec['temperature'], seed=seed)
+            def entropy_coef(step):
+                p = TRAIN_CFG['ppo']; t = min(step / max(int(p['entropy_decay_steps']), 1), 1.0)
+                return float(p['entropy_coef_start']) + (float(p['entropy_coef_end']) - float(p['entropy_coef_start'])) * t
+
+            def eval_partner_specs():
+                specs = []
+                for name in TRAIN_CFG['ppo'].get('eval_checkpoint_partners', ['bc_clone']):
+                    if name == 'bc_clone':
+                        specs.append({'id': 'eval_bc_clone', 'type': 'bc_clone', 'temperature': 1.0, 'model': bc_model})
+                    elif name.startswith('scripted_'):
+                        parts = name.split('_')
+                        if len(parts) == 2:
+                            mode, ingredient = 'balanced', parts[1]
+                        else:
+                            mode, ingredient = parts[1], parts[2]
+                        specs.append({'id': f'eval_scripted_{mode}_{ingredient}', 'type': 'scripted_greedy', 'ingredient': ingredient, 'mode': mode, 'temperature': 1.0, 'model': None})
+                return specs
+
+            def evaluate_policy_snapshot(eval_model, step_label, csv_path=None, seeds=None, partners=None):
+                seeds = list(seeds if seeds is not None else TRAIN_CFG['ppo'].get('eval_checkpoint_seeds', [101]))
+                partners = list(partners if partners is not None else eval_partner_specs())
+                eval_model.eval()
+                rows = []
+                for spec in VALID_LAYOUTS:
+                    for pspec in partners:
+                        for seed in seeds:
+                            for role in [0, 1]:
+                                try:
+                                    env = build_env_from_spec(spec)
+                                    env.reset(regen_mdp=False); state = env.state
+                                    partner = make_partner(pspec, env, role, seed=seed + role)
+                                    dq = deque([np.zeros(OBS_DIM, np.float32)] * K_STACK, maxlen=K_STACK)
+                                    dq.append((featurize(env, state, role) - NORM_MEAN) / NORM_STD)
+                                    prev = 0; ep_return = 0.0; deliveries = 0; done = False; steps = 0
+                                    while not done:
+                                        st = make_stack(dq)
+                                        with torch.no_grad():
+                                            if hasattr(eval_model, 'actor_logits'):
+                                                logits = eval_model.actor_logits(
+                                                    torch.from_numpy(st).unsqueeze(0).to(DEVICE),
+                                                    torch.tensor([role], dtype=torch.long, device=DEVICE),
+                                                    torch.tensor([prev], dtype=torch.long, device=DEVICE),
+                                                )
+                                            else:
+                                                logits = eval_model(
+                                                    torch.from_numpy(st).unsqueeze(0).to(DEVICE),
+                                                    torch.tensor([role], dtype=torch.long, device=DEVICE),
+                                                    torch.tensor([prev], dtype=torch.long, device=DEVICE),
+                                                )
+                                            ac = int(logits.argmax(-1).item())
+                                        partner.set_env(env); partner.set_agent_index(1 - role); partner.set_mdp(env.mdp)
+                                        pa, _ = partner.action(state)
+                                        joint = [Action.INDEX_TO_ACTION[ac], pa] if role == 0 else [pa, Action.INDEX_TO_ACTION[ac]]
+                                        state, reward, done, info = env.step(joint)
+                                        ep_return += float(reward)
+                                        deliveries += int(np.sum(np.asarray(info.get('sparse_r_by_agent', [reward, 0.0]), dtype=np.float32)) > 0)
+                                        prev = ac
+                                        dq.append((featurize(env, state, role) - NORM_MEAN) / NORM_STD)
+                                        steps += 1
+                                    rows.append({
+                                        'step': step_label,
+                                        'layout_id': spec['id'],
+                                        'layout_name': spec['layout_name'],
+                                        'layout_type': spec['type'],
+                                        'seed': seed,
+                                        'role': role,
+                                        'partner': pspec['id'],
+                                        'deliveries': deliveries,
+                                        'soups': deliveries,
+                                        'sparse_return': ep_return,
+                                        'steps': steps,
+                                    })
+                                except Exception as exc:
+                                    rows.append({
+                                        'step': step_label,
+                                        'layout_id': spec['id'],
+                                        'layout_name': spec['layout_name'],
+                                        'layout_type': spec['type'],
+                                        'seed': seed,
+                                        'role': role,
+                                        'partner': pspec['id'],
+                                        'deliveries': np.nan,
+                                        'soups': np.nan,
+                                        'sparse_return': np.nan,
+                                        'steps': 0,
+                                        'error': repr(exc),
+                                    })
+                good = [r for r in rows if 'error' not in r and not np.isnan(float(r['deliveries']))]
+                by_layout = {}
+                for r in good:
+                    by_layout.setdefault(r['layout_id'], []).append(float(r['deliveries']))
+                best_by_layout = {k: max(v) for k, v in by_layout.items()}
+                min_by_layout = {k: min(v) for k, v in by_layout.items()}
+                summary = {
+                    'n_eps': len(rows),
+                    'n_ok': len(good),
+                    'mean_deliveries': float(np.mean([r['deliveries'] for r in good])) if good else None,
+                    'zero_delivery_rate': float(np.mean([r['deliveries'] < 1 for r in good])) if good else None,
+                    'layouts_reaching_min3_any_partner': int(sum(v >= 3 for v in best_by_layout.values())),
+                    'layouts_passing_min3': int(sum(v >= 3 for v in min_by_layout.values())),
+                    'best_deliveries_by_layout': {k: float(v) for k, v in sorted(best_by_layout.items())},
+                    'min_deliveries_by_layout': {k: float(v) for k, v in sorted(min_by_layout.items())},
+                }
+                if csv_path is not None:
+                    fieldnames = sorted({k for r in rows for k in r.keys()})
+                    with open(csv_path, 'w', newline='') as f:
+                        w = csv.DictWriter(f, fieldnames=fieldnames)
+                        w.writeheader(); w.writerows(rows)
+                return rows, summary
+
+            if PPO_ENV_OK:
+                p = TRAIN_CFG['ppo']
+                GAMMA = float(p['gamma']); LAM = float(p['gae_lambda']); CLIP = float(p['clip_range'])
+                VC = float(p['value_coef']); MG = float(p['max_grad_norm'])
+                PPO_EP = int(p['ppo_epochs']); MB = int(p['minibatch_size']); RS = int(p['rollout_steps'])
+                TOTAL = int(p['total_steps']); HIST_FREQ = int(p['add_historical_checkpoint_freq'])
+                EVAL_FREQ = int(p.get('eval_checkpoint_freq_steps', 100000))
+                SHAPED_COEF = float(p.get('shaped_reward_coef', 0.0))
+                HIST_MIN = float(p.get('historical_min_mean_deliveries', 0.0))
+                rb_st = np.zeros((RS, K_STACK * OBS_DIM), np.float32)
+                rb_ai = np.zeros(RS, np.int64); rb_pa = np.zeros(RS, np.int64); rb_ac = np.zeros(RS, np.int64)
+                rb_rw = np.zeros(RS, np.float32); rb_dn = np.zeros(RS, np.float32); rb_vl = np.zeros(RS, np.float32); rb_lp = np.zeros(RS, np.float32)
+
+                gstep = 0; next_hist = HIST_FREQ; next_eval = EVAL_FREQ
+                ep_deliveries = []; ep_sparse_returns = []; best_deliveries = -1e9; best_coverage3 = -1
+                best_eval_score = (-1, -1, -1.0)
+                cur_spec = sample_layout_spec(); cur_ps = sample_partner(); cur_role = int(np.random.randint(0, 2))
+                env = ENV_CACHE[cur_spec['id']]; env.reset(regen_mdp=False); state = env.state
+                partner = make_partner(cur_ps, env, cur_role, seed=gstep + 123)
+                dq = deque([np.zeros(OBS_DIM, np.float32)] * K_STACK, maxlen=K_STACK)
+                dq.append((featurize(env, state, cur_role) - NORM_MEAN) / NORM_STD)
+                prev_a = 0; ep_sparse_r = 0.0; ep_shaped_r = 0.0; ep_delivery_count = 0; t0 = time.time()
+                print(f'PPO start: total_steps={TOTAL:,}, layouts={len(VALID_LAYOUTS)}, partners={len(partner_specs)}')
+
+                while gstep < TOTAL:
+                    ppo_model.eval()
+                    for si in range(RS):
+                        st_np = make_stack(dq)
+                        with torch.no_grad():
+                            logits, value = ppo_model(
+                                torch.from_numpy(st_np).unsqueeze(0).to(DEVICE),
+                                torch.tensor([cur_role], dtype=torch.long, device=DEVICE),
+                                torch.tensor([prev_a], dtype=torch.long, device=DEVICE),
+                            )
+                            dist = torch.distributions.Categorical(logits=logits)
+                            ac = dist.sample(); lp = dist.log_prob(ac)
+                        ac_i = int(ac.item())
+                        partner.set_env(env); partner.set_agent_index(1 - cur_role); partner.set_mdp(env.mdp)
+                        partner_action, _ = partner.action(state)
+                        ego_action = Action.INDEX_TO_ACTION[ac_i]
+                        joint_action = [ego_action, partner_action] if cur_role == 0 else [partner_action, ego_action]
+                        next_state, reward, done, info = env.step(joint_action)
+                        sparse_reward = float(reward)
+                        shaped_reward = float(np.sum(np.asarray(info.get('shaped_r_by_agent', [0.0, 0.0]), dtype=np.float32)))
+                        delivery_event = int(np.sum(np.asarray(info.get('sparse_r_by_agent', [0.0, 0.0]), dtype=np.float32)) > 0)
+                        train_reward = sparse_reward + SHAPED_COEF * shaped_reward
+                        rb_st[si] = st_np; rb_ai[si] = cur_role; rb_pa[si] = prev_a; rb_ac[si] = ac_i
+                        rb_rw[si] = train_reward; rb_dn[si] = float(done); rb_vl[si] = float(value.item()); rb_lp[si] = float(lp.item())
+                        ep_sparse_r += sparse_reward; ep_shaped_r += shaped_reward; ep_delivery_count += delivery_event
+                        prev_a = ac_i; state = next_state
+                        dq.append((featurize(env, state, cur_role) - NORM_MEAN) / NORM_STD)
+
+                        if done:
+                            ep_sparse_returns.append(ep_sparse_r); ep_deliveries.append(ep_delivery_count)
+                            LAYOUT_SCORES[cur_spec['id']].append(ep_delivery_count)
+                            LAYOUT_SCORES[cur_spec['id']] = LAYOUT_SCORES[cur_spec['id']][-20:]
+                            PSCORES[cur_ps['id']].append(ep_delivery_count)
+                            PSCORES[cur_ps['id']] = PSCORES[cur_ps['id']][-20:]
+                            cur_spec = sample_layout_spec(); cur_ps = sample_partner(); cur_role = int(np.random.randint(0, 2))
+                            env = ENV_CACHE[cur_spec['id']]; env.reset(regen_mdp=False); state = env.state
+                            partner = make_partner(cur_ps, env, cur_role, seed=gstep + si + 456)
+                            dq = deque([np.zeros(OBS_DIM, np.float32)] * K_STACK, maxlen=K_STACK)
+                            dq.append((featurize(env, state, cur_role) - NORM_MEAN) / NORM_STD)
+                            prev_a = 0; ep_sparse_r = 0.0; ep_shaped_r = 0.0; ep_delivery_count = 0
+
+                    with torch.no_grad():
+                        _, last_value = ppo_model(
+                            torch.from_numpy(make_stack(dq)).unsqueeze(0).to(DEVICE),
+                            torch.tensor([cur_role], dtype=torch.long, device=DEVICE),
+                            torch.tensor([prev_a], dtype=torch.long, device=DEVICE),
+                        )
+                    adv = np.zeros(RS, np.float32); gae = 0.0; last_done = bool(rb_dn[RS - 1])
+                    for t in reversed(range(RS)):
+                        next_non_terminal = 1.0 - (float(last_done) if t == RS - 1 else rb_dn[t + 1])
+                        next_value = float(last_value.item()) if t == RS - 1 else rb_vl[t + 1]
+                        delta = rb_rw[t] + GAMMA * next_value * next_non_terminal - rb_vl[t]
+                        gae = delta + GAMMA * LAM * next_non_terminal * gae
+                        adv[t] = gae
+                    returns = adv + rb_vl
+                    adv = (adv - adv.mean()) / (adv.std() + 1e-8)
+
+                    ppo_model.train(); pg_losses = []; v_losses = []; ents = []
+                    ec = entropy_coef(gstep)
+                    for _ in range(PPO_EP):
+                        order = np.random.permutation(RS)
+                        for start in range(0, RS, MB):
+                            batch_idx = order[start:start + MB]
+                            logits, values = ppo_model(
+                                torch.from_numpy(rb_st[batch_idx]).to(DEVICE),
+                                torch.from_numpy(rb_ai[batch_idx]).to(DEVICE),
+                                torch.from_numpy(rb_pa[batch_idx]).to(DEVICE),
+                            )
+                            dist = torch.distributions.Categorical(logits=logits)
+                            new_lp = dist.log_prob(torch.from_numpy(rb_ac[batch_idx]).to(DEVICE))
+                            entropy = dist.entropy().mean()
+                            ratio = torch.exp(new_lp - torch.from_numpy(rb_lp[batch_idx]).to(DEVICE))
+                            mb_adv = torch.from_numpy(adv[batch_idx]).to(DEVICE)
+                            mb_ret = torch.from_numpy(returns[batch_idx]).to(DEVICE)
+                            pg = torch.max(-mb_adv * ratio, -mb_adv * torch.clamp(ratio, 1 - CLIP, 1 + CLIP)).mean()
+                            vl = F.mse_loss(values, mb_ret)
+                            loss = pg + VC * vl - ec * entropy
+                            opt_ppo.zero_grad(); loss.backward()
+                            nn.utils.clip_grad_norm_(ppo_model.parameters(), MG)
+                            opt_ppo.step()
+                            pg_losses.append(float(pg.item())); v_losses.append(float(vl.item())); ents.append(float(entropy.item()))
+
+                    gstep += RS
+                    if ep_deliveries:
+                        mean_deliveries = float(np.mean(ep_deliveries[-20:]))
+                        zero_rate = float(np.mean(np.array(ep_deliveries[-20:]) < 1.0))
+                        layout_best = {sid: (max(vals) if vals else 0) for sid, vals in LAYOUT_SCORES.items()}
+                        coverage3 = int(sum(v >= 3 for v in layout_best.values()))
+                    else:
+                        mean_deliveries = 0.0
+                        zero_rate = 1.0
+                        coverage3 = 0
+                    if gstep >= next_hist and gstep < TOTAL:
+                        if mean_deliveries >= HIST_MIN:
+                            add_historical(gstep, mean_deliveries)
+                        next_hist += HIST_FREQ
+                    if ep_deliveries:
+                        row = {
+                            'step': int(gstep),
+                            'mean_deliveries': mean_deliveries,
+                            'zero_delivery_rate': zero_rate,
+                            'layout_train_coverage3': coverage3,
+                            'partners': len(partner_specs),
+                            'pg_loss': float(np.mean(pg_losses)),
+                            'value_loss': float(np.mean(v_losses)),
+                            'entropy': float(np.mean(ents)),
+                            'elapsed_s': time.time() - t0,
+                        }
+                        ppo_hist.append(row)
+                        print(f"Step {gstep:8d}: deliveries={mean_deliveries:.3f} coverage3={coverage3}/{len(VALID_LAYOUTS)} zero={zero_rate:.3f} partners={len(partner_specs)}")
+                        if (coverage3, mean_deliveries) > (best_coverage3, best_deliveries):
+                            best_coverage3 = coverage3
+                            best_deliveries = mean_deliveries
+                            torch.save({
+                                'step': int(gstep),
+                                'model_state_dict': ppo_model.state_dict(),
+                                'mean_deliveries': best_deliveries,
+                                'layout_train_coverage3': best_coverage3,
+                                'obs_dim': OBS_DIM,
+                                'k_stack': K_STACK,
+                                'hidden_sizes': list(HS),
+                            }, OUTPUT_DIR / 'train_checkpoint_by_coverage.pt')
+                            progress['ppo_best_deliveries'] = best_deliveries
+                            progress['ppo_best_train_coverage3'] = best_coverage3
+                        if EVAL_FREQ > 0 and (gstep >= next_eval or gstep >= TOTAL):
+                            _, eval_summary = evaluate_policy_snapshot(ppo_model, int(gstep))
+                            eval_score = (
+                                int(eval_summary['layouts_passing_min3']),
+                                int(eval_summary['layouts_reaching_min3_any_partner']),
+                                float(eval_summary['mean_deliveries'] or 0.0),
+                            )
+                            print(f"Eval {gstep:8d}: pass3={eval_score[0]}/{len(VALID_LAYOUTS)} reach3={eval_score[1]}/{len(VALID_LAYOUTS)} mean={eval_score[2]:.3f}")
+                            if eval_score > best_eval_score:
+                                best_eval_score = eval_score
+                                torch.save({
+                                    'step': int(gstep),
+                                    'model_state_dict': ppo_model.state_dict(),
+                                    'eval_summary': eval_summary,
+                                    'obs_dim': OBS_DIM,
+                                    'k_stack': K_STACK,
+                                    'hidden_sizes': list(HS),
+                                }, OUTPUT_DIR / 'best_checkpoint_by_soups.pt')
+                                (OUTPUT_DIR / 'best_checkpoint_eval_summary.json').write_text(json.dumps(eval_summary, indent=2), encoding='utf-8')
+                                progress['ppo_best_eval_pass3'] = eval_score[0]
+                                progress['ppo_best_eval_reach3'] = eval_score[1]
+                                progress['ppo_best_eval_mean_deliveries'] = eval_score[2]
+                            while gstep >= next_eval:
+                                next_eval += EVAL_FREQ
+                        with open(OUTPUT_DIR / 'option_b_ppo_training.csv', 'w', newline='') as f:
+                            w = csv.DictWriter(f, fieldnames=list(row.keys()))
+                            w.writeheader(); w.writerows(ppo_hist)
+                        (OUTPUT_DIR / 'partner_pool_manifest.json').write_text(
+                            json.dumps({'partners': manifest_partners()}, indent=2),
+                            encoding='utf-8',
+                        )
+                        save_progress()
+
+                progress['artifacts'].extend(['best_checkpoint_by_soups.pt', 'best_checkpoint_eval_summary.json', 'train_checkpoint_by_coverage.pt', 'option_b_ppo_training.csv', 'partner_pool_manifest.json'])
+                save_progress()
+            else:
+                print('PPO skipped: no valid Overcooked layouts after preflight')
+            """
+        ),
+        md("## Exportar política y verificar paridad"),
+        code(
+            """
+            progress['stage'] = 'export'; save_progress()
+            ppo_ckpt = OUTPUT_DIR / 'best_checkpoint_by_soups.pt'
+            if ppo_ckpt.exists():
+                ck = torch.load(ppo_ckpt, map_location=DEVICE, weights_only=False)
+                ppo_model.load_state_dict(ck['model_state_dict'])
+                ppo_model.eval()
+                export_model = ppo_model
+                params = {f'actor_encoder.{n}': p.detach().cpu().numpy() for n, p in ppo_model.actor_encoder.named_parameters()}
+                params.update({f'actor_head.{n}': p.detach().cpu().numpy() for n, p in ppo_model.actor_head.named_parameters()})
+                model_type = 'fcp_ppo_mlp'
+            else:
+                bc_model.eval()
+                export_model = bc_model
+                params = {f'actor_encoder.{n}': p.detach().cpu().numpy() for n, p in bc_model.encoder.named_parameters()}
+                params.update({f'actor_head.{n}': p.detach().cpu().numpy() for n, p in bc_model.actor_head.named_parameters()})
+                model_type = 'bc_warmstart_mlp'
+
+            np.savez_compressed(OUTPUT_DIR / 'final_policy.npz', **params)
+            cfg_out = {
+                'option': 'B',
+                'model_type': model_type,
+                'obs_dim': OBS_DIM,
+                'k_stack': K_STACK,
+                'num_actions': 6,
+                'hidden_sizes': list(HS),
+                'normalization_path': 'artifacts/shared/normalization.json',
+                'agent_index_encoding': 'one_hot',
+                'previous_action': True,
+                'obs_stack_k': K_STACK,
+            }
+            (OUTPUT_DIR / 'final_policy_config.json').write_text(json.dumps(cfg_out, indent=2), encoding='utf-8')
+
+            exported = np.load(OUTPUT_DIR / 'final_policy.npz')
+            def ln_np(x, w, b, eps=1e-5):
+                return (x - x.mean(-1, keepdims=True)) / np.sqrt(x.var(-1, keepdims=True) + eps) * w + b
+            def np_forward(st, ai, prev):
+                ah = np.zeros(2, np.float32); ah[int(ai)] = 1.0
+                ph = np.zeros(6, np.float32); ph[int(prev)] = 1.0
+                x = np.concatenate([st.astype(np.float32).ravel(), ah, ph])
+                li = 0
+                for i in range(len(HS)):
+                    W = exported[f'actor_encoder.net.{li}.weight']; b = exported[f'actor_encoder.net.{li}.bias']
+                    x = x @ W.T + b; li += 1
+                    if i != len(HS) - 1:
+                        x = ln_np(x, exported[f'actor_encoder.net.{li}.weight'], exported[f'actor_encoder.net.{li}.bias']); li += 1
+                        x = np.maximum(0.0, x); li += 1
+                        li += 1
+                return x @ exported['actor_head.weight'].T + exported['actor_head.bias']
+
+            max_err = 0.0; matches = 0; checks = 20
+            for _ in range(checks):
+                st = np.random.randn(K_STACK * OBS_DIM).astype(np.float32)
+                ai = int(np.random.randint(0, 2)); prev = int(np.random.randint(0, 6))
+                with torch.no_grad():
+                    if hasattr(export_model, 'actor_logits'):
+                        pt = export_model.actor_logits(
+                            torch.from_numpy(st).unsqueeze(0).to(DEVICE),
+                            torch.tensor([ai], dtype=torch.long, device=DEVICE),
+                            torch.tensor([prev], dtype=torch.long, device=DEVICE),
+                        ).cpu().numpy()[0]
+                    else:
+                        pt = export_model(
+                            torch.from_numpy(st).unsqueeze(0).to(DEVICE),
+                            torch.tensor([ai], dtype=torch.long, device=DEVICE),
+                            torch.tensor([prev], dtype=torch.long, device=DEVICE),
+                        ).cpu().numpy()[0]
+                nf = np_forward(st, ai, prev)
+                err = float(np.abs(pt - nf).max())
+                max_err = max(max_err, err)
+                matches += int(np.argmax(pt) == np.argmax(nf))
+            parity_ok = bool(max_err < 1e-5 and matches == checks)
+            (OUTPUT_DIR / 'parity_check.json').write_text(json.dumps({
+                'max_abs_error': max_err,
+                'action_match': matches,
+                'checks': checks,
+                'parity_ok': parity_ok,
+            }, indent=2), encoding='utf-8')
+            print(f'Parity max_err={max_err:.3e}, match={matches}/{checks}, ok={parity_ok}')
+            progress['parity_ok'] = parity_ok
+            progress['artifacts'].extend(['final_policy.npz', 'final_policy_config.json', 'parity_check.json'])
+            save_progress()
+            """
+        ),
+        md("## Evaluar contra partners de checkpoint"),
+        code(
+            """
+            progress['stage'] = 'evaluation'; save_progress()
+            if PPO_ENV_OK:
+                eval_model = ppo_model if (OUTPUT_DIR / 'best_checkpoint_by_soups.pt').exists() else bc_model
+                seeds = [42, 43, 44]
+                _, summary = evaluate_policy_snapshot(eval_model, 'final', OUTPUT_DIR / 'option_b_evaluation.csv', seeds=seeds)
+                (OUTPUT_DIR / 'eval_summary.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
+                progress['eval_summary'] = summary
+                progress['artifacts'].extend(['option_b_evaluation.csv', 'eval_summary.json'])
+            else:
+                print('Evaluation skipped: no valid PPO env')
+            save_progress()
+            """
+        ),
+        md("## Finalizar"),
+        code(
+            """
+            try:
+                if not (OUTPUT_DIR / 'partner_pool_manifest.json').exists():
+                    (OUTPUT_DIR / 'partner_pool_manifest.json').write_text(
+                        json.dumps({'partners': manifest_partners() if 'partner_specs' in globals() else []}, indent=2),
+                        encoding='utf-8',
+                    )
+                    progress['artifacts'].append('partner_pool_manifest.json')
+                progress['status'] = 'complete'
+                progress['stage'] = 'done'
+            except Exception as exc:
+                progress['status'] = 'failed'
+                progress['error'] = repr(exc)
+                progress['traceback'] = traceback.format_exc()
+            finally:
+                save_progress()
+                print('Output files:')
+                for path in sorted(OUTPUT_DIR.iterdir()):
+                    if path.is_file():
+                        print(f'  {path.name}: {path.stat().st_size / 1024:.1f} KB')
+                print('Run status:', progress['status'])
+            """
+        ),
+    ]
+
     nb = {
         "cells": cells,
         "metadata": {
-            "kernelspec": {
-                "display_name": "Python 3",
-                "language": "python",
-                "name": "python3"
-            },
-            "language_info": {
-                "name": "python",
-                "version": "3.10.0"
-            }
+            "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
+            "language_info": {"name": "python", "version": "3.10.0"},
         },
         "nbformat": 4,
-        "nbformat_minor": 4
+        "nbformat_minor": 4,
     }
-    
-    with open(nb_path, "w", encoding="utf-8") as f:
-        json.dump(nb, f, indent=1)
-    print(f"Jupyter notebook built successfully at {nb_path}")
+
+    NB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    NB_PATH.write_text(json.dumps(nb, indent=1), encoding="utf-8")
+    print(f"Jupyter notebook built successfully at {NB_PATH}")
+
 
 if __name__ == "__main__":
     build()

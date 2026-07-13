@@ -33,12 +33,10 @@ def compute_quality_tier(rewards: np.ndarray, actions: np.ndarray) -> tuple[str,
     
     Tier A: multiple soups, high score -> weight 1.5
     Tier B: at least 1 soup, consistent progress -> weight 1.0
-    Tier C: 0 soups but useful navigation/interactions -> weight 0.4
+    Tier C: 0 soups but useful navigation/interactions -> weight 0.1
     Tier D: inactive/loops/corrupt -> weight 0.0 (excluded)
     """
-    reward_sum = float(rewards.sum())
-    # Heuristic: each soup delivery = 20 reward
-    soups = reward_sum / 20.0
+    deliveries = int((rewards > 0).sum())
     num_steps = len(actions)
     interact_count = int((actions == 5).sum())
     stay_count = int((actions == 4).sum())
@@ -54,14 +52,14 @@ def compute_quality_tier(rewards: np.ndarray, actions: np.ndarray) -> tuple[str,
         else:
             cur_run = 1
 
-    if soups >= 3:
+    if deliveries >= 3:
         return "A", 1.5
-    elif soups >= 2:
+    elif deliveries >= 2:
         return "A", 1.5
-    elif soups >= 1:
+    elif deliveries >= 1:
         return "B", 1.0
     elif interact_count > 5 and stay_ratio < 0.8 and max_run < 50:
-        return "C", 0.4
+        return "C", 0.1
     elif stay_ratio > 0.9 or max_run > 100:
         return "D", 0.0
     else:
@@ -121,7 +119,7 @@ def load_episodes_from_npz(npz_path: pathlib.Path) -> list[dict]:
             "quality_tier": tier,
             "quality_weight": weight,
             "reward_sum": float(ep_rewards.sum()),
-            "soups": float(ep_rewards.sum()) / 20.0,
+            "deliveries": int((ep_rewards > 0).sum()),
         })
 
     return episodes
@@ -134,15 +132,7 @@ def load_all_episodes(data_root: str = "data", exclude_tiers: Optional[list[str]
 
     data_path = pathlib.Path(data_root)
     all_episodes = []
-    seen_stems = set()
-
     for npz_file in sorted(data_path.rglob("*.npz")):
-        # Skip duplicates by stem
-        stem = npz_file.stem
-        if stem in seen_stems:
-            continue
-        seen_stems.add(stem)
-
         episodes = load_episodes_from_npz(npz_file)
         for ep in episodes:
             if ep["quality_tier"] not in exclude_tiers:

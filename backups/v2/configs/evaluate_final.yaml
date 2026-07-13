@@ -8,13 +8,13 @@ environment:
 policies:
   agent_0:
     type: python_class
-    path: policies/template.py
+    path: backups/v2/policies/template.py
     class_name: StudentAgent
-    name: option_b_agent
+    name: option_b_v5_agent
     config:
       mode: option_b
-      model_config_path: artifacts/option_b/final_policy_config.json
-      checkpoint_path: artifacts/option_b/final_policy.npz
+      model_config_path: backups/v2/weights/final_policy_config.json
+      checkpoint_path: backups/v2/weights/final_policy.npz
     random_action_prob: 0.0
     max_action_time_ms: 100
     invalid_action: stay
@@ -29,16 +29,16 @@ policies:
 execution:
   num_episodes: 10
   episode_seeds:
-  - 42
-  - 43
-  - 44
-  - 45
-  - 46
-  - 47
-  - 48
-  - 49
-  - 50
-  - 51
+    - 42
+    - 43
+    - 44
+    - 45
+    - 46
+    - 47
+    - 48
+    - 49
+    - 50
+    - 51
   swap_agent_positions: true
 observation:
   type: featurized
@@ -48,7 +48,7 @@ rendering:
   fps: 0
   save_gif: false
 logging:
-  output_dir: outputs/option_b_evaluation
+  output_dir: outputs/backup_v2_evaluation
   save_step_log: false
   save_episode_summary: true
   save_trajectory_pickle: false

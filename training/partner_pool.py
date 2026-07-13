@@ -3,14 +3,8 @@
 Provides a registry of partner policies and sampling strategies.
 
 Partners included:
-- stay: always stay (action 4)
-- random_motion: random from {0,1,2,3,4}
-- greedy_full_task: built-in greedy agent
-- greedy_sticky: greedy with sticky actions
-- greedy_noise_low: greedy with 10% random
-- greedy_noise_mid: greedy with 25% random
-- greedy_noise_high: greedy with 40% random
-- historical_bc_<N>: frozen BC checkpoints (added during PPO training)
+- bc_clone_t<N>: frozen Behavior Cloning partner sampled at temperature N
+- historical_ppo_<N>: frozen PPO checkpoints (added during PPO training)
 
 Sampling strategies:
 - uniform: equal probability over all partners
@@ -21,7 +15,8 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Optional
+from collections import deque
+from typing import Any, Optional
 
 import numpy as np
 
@@ -38,6 +33,8 @@ class PartnerConfig:
         random_action_prob: float = 0.0,
         sticky_action_prob: float = 0.0,
         checkpoint_path: Optional[str] = None,
+        temperature: float = 1.0,
+        snapshot_step: Optional[int] = None,
         skill_estimate: float = 0.5,
         behavior_stats: Optional[dict] = None,
     ):
@@ -48,6 +45,8 @@ class PartnerConfig:
         self.random_action_prob = random_action_prob
         self.sticky_action_prob = sticky_action_prob
         self.checkpoint_path = checkpoint_path
+        self.temperature = temperature
+        self.snapshot_step = snapshot_step
         self.skill_estimate = skill_estimate
         self.behavior_stats = behavior_stats or {}
 
@@ -60,9 +59,86 @@ class PartnerConfig:
             "random_action_prob": self.random_action_prob,
             "sticky_action_prob": self.sticky_action_prob,
             "checkpoint_path": self.checkpoint_path,
+            "temperature": self.temperature,
+            "snapshot_step": self.snapshot_step,
             "skill_estimate": self.skill_estimate,
             "behavior_stats": self.behavior_stats,
         }
+
+
+class NeuralPartner:
+    """Overcooked-compatible agent wrapper around a frozen PyTorch policy."""
+
+    def __init__(
+        self,
+        model: Any,
+        norm_mean: np.ndarray,
+        norm_std: np.ndarray,
+        env: Any = None,
+        agent_index: int = 1,
+        temperature: float = 1.0,
+        seed: int = 42,
+        device: Any = None,
+        k_stack: int = 4,
+        obs_dim: int = 96,
+    ):
+        import torch
+
+        self.model = model
+        self.model.eval()
+        self.norm_mean = np.asarray(norm_mean, dtype=np.float32)
+        self.norm_std = np.asarray(norm_std, dtype=np.float32)
+        self.env = env
+        self.agent_index = int(agent_index)
+        self.temperature = max(float(temperature), 1e-6)
+        self.rng = np.random.default_rng(seed)
+        self.device = device or next(model.parameters()).device
+        self.k_stack = int(k_stack)
+        self.obs_dim = int(obs_dim)
+        self.prev_action = 0
+        self.obs_stack: deque[np.ndarray] = deque(maxlen=self.k_stack)
+        self.reset()
+
+    def reset(self) -> None:
+        self.prev_action = 0
+        self.obs_stack.clear()
+        for _ in range(self.k_stack):
+            self.obs_stack.append(np.zeros(self.obs_dim, dtype=np.float32))
+
+    def set_agent_index(self, agent_index: int) -> None:
+        if int(agent_index) != self.agent_index:
+            self.agent_index = int(agent_index)
+            self.reset()
+
+    def set_env(self, env: Any) -> None:
+        if env is not self.env:
+            self.env = env
+            self.reset()
+
+    def set_mdp(self, mdp: Any) -> None:
+        self.mdp = mdp
+
+    def action(self, state: Any):
+        import torch
+        from overcooked_ai_py.mdp.actions import Action
+
+        if self.env is None:
+            raise ValueError("NeuralPartner requires env before action()")
+        obs = self.env.featurize_state_mdp(state)[self.agent_index].astype(np.float32)
+        self.obs_stack.append((obs - self.norm_mean) / self.norm_std)
+        stack = np.concatenate(list(self.obs_stack)).astype(np.float32)
+        with torch.no_grad():
+            logits = self.model(
+                torch.from_numpy(stack).unsqueeze(0).to(self.device),
+                torch.tensor([self.agent_index], dtype=torch.long, device=self.device),
+                torch.tensor([self.prev_action], dtype=torch.long, device=self.device),
+            )
+            if isinstance(logits, tuple):
+                logits = logits[0]
+            probs = torch.softmax(logits[0] / self.temperature, dim=-1).cpu().numpy()
+        action_idx = int(self.rng.choice(len(probs), p=probs))
+        self.prev_action = action_idx
+        return Action.INDEX_TO_ACTION[action_idx], {}
 
 
 class PartnerPool:
@@ -77,34 +153,24 @@ class PartnerPool:
         self.partners.append(partner)
         self.partner_scores[partner.partner_id] = []
 
-    def build_default_pool(self) -> None:
-        """Add all base partners."""
-        self.add(PartnerConfig("stay", "builtin", random_action_prob=0.0, skill_estimate=0.0))
-        self.add(PartnerConfig("random_motion", "builtin", random_action_prob=1.0, skill_estimate=0.1))
-        self.add(PartnerConfig("greedy_full_task", "builtin", random_action_prob=0.0, skill_estimate=0.9))
-        self.add(PartnerConfig(
-            "greedy_noise_low", "builtin",
-            partner_type="greedy_with_noise",
-            random_action_prob=0.10, skill_estimate=0.7
-        ))
-        self.add(PartnerConfig(
-            "greedy_noise_mid", "builtin",
-            partner_type="greedy_with_noise",
-            random_action_prob=0.25, skill_estimate=0.5
-        ))
-        self.add(PartnerConfig(
-            "greedy_noise_high", "builtin",
-            partner_type="greedy_with_noise",
-            random_action_prob=0.40, skill_estimate=0.3
-        ))
+    def build_default_pool(self, temperatures: tuple[float, ...] = (0.75, 1.0, 1.5)) -> None:
+        """Add BC clone partners; no GreedyHumanModel dependency."""
+        for temp in temperatures:
+            self.add(PartnerConfig(
+                f"bc_clone_t{str(temp).replace('.', '_')}",
+                "bc_clone",
+                temperature=temp,
+                skill_estimate=0.5,
+            ))
 
     def add_historical_checkpoint(self, checkpoint_path: str, step: int, seed: int) -> str:
-        """Add a frozen ego-agent checkpoint as a partner."""
-        pid = f"historical_bc_step{step}_seed{seed}"
+        """Add a frozen PPO checkpoint as a partner."""
+        pid = f"historical_ppo_step{step}_seed{seed}"
         self.add(PartnerConfig(
             pid,
-            partner_type="bc_checkpoint",
+            partner_type="historical_ppo",
             checkpoint_path=checkpoint_path,
+            snapshot_step=step,
             skill_estimate=0.5,
             behavior_stats={"training_step": step, "seed": seed},
         ))

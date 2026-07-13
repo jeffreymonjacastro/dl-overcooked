@@ -1,16 +1,20 @@
 seed: 67
 mode: debug
 environment:
-  layout_name: tutorial_0
+  layout_name: cramped_room 
   layout_file: null
   horizon: 250
   old_dynamics: true
 policies:
   agent_0:
-    type: builtin
-    name: greedy_full_task
-    ingredient: onion
-    avoid_teammate: true
+    type: python_class
+    path: policies/template.py
+    class_name: StudentAgent
+    name: option_b_agent
+    config:
+      mode: option_b
+      model_config_path: artifacts/option_b/final_policy_config.json
+      checkpoint_path: artifacts/option_b/final_policy.npz
     random_action_prob: 0
     max_action_time_ms: 100
     invalid_action: stay
@@ -33,11 +37,11 @@ observation:
 rendering:
   mode: window
   fps: 5
-  window_caption: Overcooked-AI Basic Policies
+  window_caption: Overcooked-AI Play with Student Agent (Option B)
   save_gif: false
-  gif_path: outputs/basic_policies.gif
+  gif_path: outputs/student_play.gif
 logging:
-  output_dir: outputs/basic_policies_run
+  output_dir: outputs/student_play_run
   save_step_log: true
   save_episode_summary: true
   save_trajectory_pickle: true

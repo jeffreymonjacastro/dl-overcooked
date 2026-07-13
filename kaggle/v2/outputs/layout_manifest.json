@@ -1,0 +1,584 @@
+{
+  "catalog_layout_count": 57,
+  "catalog_weight_sum": 528,
+  "valid_layout_count": 50,
+  "layouts": [
+    {
+      "id": "named:cramped_room",
+      "type": "named",
+      "layout_name": "cramped_room",
+      "hash": null,
+      "weight": 58,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:counter_circuit",
+      "type": "named",
+      "layout_name": "counter_circuit",
+      "hash": null,
+      "weight": 50,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:asymmetric_advantages",
+      "type": "named",
+      "layout_name": "asymmetric_advantages",
+      "hash": null,
+      "weight": 47,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:forced_coordination",
+      "type": "named",
+      "layout_name": "forced_coordination",
+      "hash": null,
+      "weight": 45,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:coordination_ring",
+      "type": "named",
+      "layout_name": "coordination_ring",
+      "hash": null,
+      "weight": 44,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:simple_tomato",
+      "type": "named",
+      "layout_name": "simple_tomato",
+      "hash": null,
+      "weight": 41,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:simple_o",
+      "type": "named",
+      "layout_name": "simple_o",
+      "hash": null,
+      "weight": 37,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:large_room",
+      "type": "named",
+      "layout_name": "large_room",
+      "hash": null,
+      "weight": 36,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:soup_coordination",
+      "type": "named",
+      "layout_name": "soup_coordination",
+      "hash": null,
+      "weight": 35,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:small_corridor",
+      "type": "named",
+      "layout_name": "small_corridor",
+      "hash": null,
+      "weight": 32,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:tutorial_0",
+      "type": "named",
+      "layout_name": "tutorial_0",
+      "hash": null,
+      "weight": 10,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:tutorial_3",
+      "type": "named",
+      "layout_name": "tutorial_3",
+      "hash": null,
+      "weight": 3,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:chavez_room",
+      "type": "named",
+      "layout_name": "chavez_room",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "excluded",
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    {
+      "id": "custom:cocina_abierta:f15f9cb6ac0a",
+      "type": "custom",
+      "layout_name": "cocina_abierta",
+      "hash": "f15f9cb6ac0a",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:cocina_redonda:eb7134c02656",
+      "type": "custom",
+      "layout_name": "cocina_redonda",
+      "hash": "eb7134c02656",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:counter_circuit_o_1order",
+      "type": "named",
+      "layout_name": "counter_circuit_o_1order",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:cramped_corridor",
+      "type": "named",
+      "layout_name": "cramped_corridor",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:custom_easy_coop:16b44f11b914",
+      "type": "custom",
+      "layout_name": "custom_easy_coop",
+      "hash": "16b44f11b914",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:custom_hallway:08ee62c2158f",
+      "type": "custom",
+      "layout_name": "custom_hallway",
+      "hash": "08ee62c2158f",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:custom_island:e6e1643bad8c",
+      "type": "custom",
+      "layout_name": "custom_island",
+      "hash": "e6e1643bad8c",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:custom_kitchen_sink:093741b39cf1",
+      "type": "custom",
+      "layout_name": "custom_kitchen_sink",
+      "hash": "093741b39cf1",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:custom_room:5bddf0abd653",
+      "type": "custom",
+      "layout_name": "custom_room",
+      "hash": "5bddf0abd653",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:custom_tomato_paradise:c5f77da677bf",
+      "type": "custom",
+      "layout_name": "custom_tomato_paradise",
+      "hash": "c5f77da677bf",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:diagonal_run",
+      "type": "named",
+      "layout_name": "diagonal_run",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "excluded",
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    {
+      "id": "custom:doble_olla:99bca7fde92e",
+      "type": "custom",
+      "layout_name": "doble_olla",
+      "hash": "99bca7fde92e",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:dos_ollas:f036785c8431",
+      "type": "custom",
+      "layout_name": "dos_ollas",
+      "hash": "f036785c8431",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:duelo_1v1:69b5c433e09d",
+      "type": "custom",
+      "layout_name": "duelo_1v1",
+      "hash": "69b5c433e09d",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:esquina_l:645d57859a6f",
+      "type": "custom",
+      "layout_name": "esquina_l",
+      "hash": "645d57859a6f",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:guillermo_custom_01:d6f8289eefd9",
+      "type": "custom",
+      "layout_name": "guillermo_custom_01",
+      "hash": "d6f8289eefd9",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:guillermo_custom_02:693051583eb0",
+      "type": "custom",
+      "layout_name": "guillermo_custom_02",
+      "hash": "693051583eb0",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:guillermo_custom_03:d80cc180113a",
+      "type": "custom",
+      "layout_name": "guillermo_custom_03",
+      "hash": "d80cc180113a",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:guillermo_custom_04:d8b6465bec3a",
+      "type": "custom",
+      "layout_name": "guillermo_custom_04",
+      "hash": "d8b6465bec3a",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:guillermo_custom_05:117ae8c81cdf",
+      "type": "custom",
+      "layout_name": "guillermo_custom_05",
+      "hash": "117ae8c81cdf",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:isla_central:08c322e38fad",
+      "type": "custom",
+      "layout_name": "isla_central",
+      "hash": "08c322e38fad",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:jamcy_room",
+      "type": "named",
+      "layout_name": "jamcy_room",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "excluded",
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    {
+      "id": "named:m_room",
+      "type": "named",
+      "layout_name": "m_room",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "excluded",
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    {
+      "id": "named:marshmallow_experiment",
+      "type": "named",
+      "layout_name": "marshmallow_experiment",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:maze_kitchen",
+      "type": "named",
+      "layout_name": "maze_kitchen",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "excluded",
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    {
+      "id": "custom:mini_reto:a9bcc6fcc80d",
+      "type": "custom",
+      "layout_name": "mini_reto",
+      "hash": "a9bcc6fcc80d",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:onion_easy_1:dc4e2617272e",
+      "type": "custom",
+      "layout_name": "onion_easy_1",
+      "hash": "dc4e2617272e",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:onion_easy_2:4b6aaa7afef9",
+      "type": "custom",
+      "layout_name": "onion_easy_2",
+      "hash": "4b6aaa7afef9",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:onion_easy_3:33807e4344c3",
+      "type": "custom",
+      "layout_name": "onion_easy_3",
+      "hash": "33807e4344c3",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:onion_hard_1:867ff3f38374",
+      "type": "custom",
+      "layout_name": "onion_hard_1",
+      "hash": "867ff3f38374",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:onion_hard_2:474a3dd1be07",
+      "type": "custom",
+      "layout_name": "onion_hard_2",
+      "hash": "474a3dd1be07",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:sala_obstaculo:5ae1f6ebb689",
+      "type": "custom",
+      "layout_name": "sala_obstaculo",
+      "hash": "5ae1f6ebb689",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:salinas_custom_01:73a8964f4a1e",
+      "type": "custom",
+      "layout_name": "salinas_custom_01",
+      "hash": "73a8964f4a1e",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:salinas_custom_02:35bc9e429b00",
+      "type": "custom",
+      "layout_name": "salinas_custom_02",
+      "hash": "35bc9e429b00",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:salinas_custom_03:ae3049477f65",
+      "type": "custom",
+      "layout_name": "salinas_custom_03",
+      "hash": "ae3049477f65",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:salinas_custom_04:85077017355c",
+      "type": "custom",
+      "layout_name": "salinas_custom_04",
+      "hash": "85077017355c",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "excluded",
+      "error": "TimeoutError('layout preflight timed out after 60s')"
+    },
+    {
+      "id": "custom:salinas_custom_05:dd8e115717ab",
+      "type": "custom",
+      "layout_name": "salinas_custom_05",
+      "hash": "dd8e115717ab",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "excluded",
+      "error": "TimeoutError('layout preflight timed out after 60s')"
+    },
+    {
+      "id": "custom:salon_amplio:0893f66eb6f3",
+      "type": "custom",
+      "layout_name": "salon_amplio",
+      "hash": "0893f66eb6f3",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:tomato_easy_1:cfc708749abe",
+      "type": "custom",
+      "layout_name": "tomato_easy_1",
+      "hash": "cfc708749abe",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:tomato_easy_2:36cb3d1092f2",
+      "type": "custom",
+      "layout_name": "tomato_easy_2",
+      "hash": "36cb3d1092f2",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:tomato_hard_1:ff87d9b6ee53",
+      "type": "custom",
+      "layout_name": "tomato_hard_1",
+      "hash": "ff87d9b6ee53",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:tomato_hard_2:96cc36847461",
+      "type": "custom",
+      "layout_name": "tomato_hard_2",
+      "hash": "96cc36847461",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "custom:tomato_hard_3:b2c6c4f419ff",
+      "type": "custom",
+      "layout_name": "tomato_hard_3",
+      "hash": "b2c6c4f419ff",
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    },
+    {
+      "id": "named:tutorial_2",
+      "type": "named",
+      "layout_name": "tutorial_2",
+      "hash": null,
+      "weight": 2,
+      "horizon": 250,
+      "example_paths": null,
+      "status": "ok"
+    }
+  ]
+}

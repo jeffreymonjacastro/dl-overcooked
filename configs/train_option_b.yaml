@@ -43,18 +43,47 @@ ppo:
   adaptive_epsilon: 0.20
   adaptive_beta: 1.0
   partner_score_update_freq: 10000
+  bc_partner_temperatures: [0.75, 1.0, 1.5]
+  scripted_partner_ingredients: [onion, tomato]
+  scripted_partner_modes: [balanced, runner, server]
+  shaped_reward_coef: 1.0
+  historical_min_mean_deliveries: 1.5
 
   # Environment
+  layout_source: all_from_data
+  layout_sampling: adaptive_coverage
+  layout_deficit_beta: 2.0
+  layout_focus_multiplier: 3.0
+  layout_focus_ids:
+    - custom:custom_easy_coop:16b44f11b914
+    - custom:custom_hallway:08ee62c2158f
+    - custom:duelo_1v1:69b5c433e09d
+    - custom:guillermo_custom_02:693051583eb0
+    - custom:guillermo_custom_03:d80cc180113a
+    - custom:guillermo_custom_04:d8b6465bec3a
+    - custom:guillermo_custom_05:117ae8c81cdf
+    - custom:salinas_custom_02:35bc9e429b00
+    - named:asymmetric_advantages
+    - named:counter_circuit
+    - named:counter_circuit_o_1order
+    - named:cramped_corridor
+    - named:forced_coordination
+    - named:small_corridor
+  layout_preflight_timeout_s: 60
   layouts:
     - cramped_room
     - coordination_ring
     - forced_coordination
     - asymmetric_advantages
     - counter_circuit
+    - simple_tomato
   agent_role_swap: true
 
   # Checkpointing
   checkpoint_freq_steps: 50000
+  eval_checkpoint_freq_steps: 1000000
+  eval_checkpoint_seeds: [101]
+  eval_checkpoint_partners: [bc_clone, scripted_onion, scripted_tomato, scripted_server_tomato]
   add_historical_checkpoint_freq: 100000
   historical_checkpoint_seeds: [42, 123, 456, 789]
 

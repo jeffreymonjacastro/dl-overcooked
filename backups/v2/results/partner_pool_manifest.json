@@ -1,0 +1,36 @@
+{
+  "partners": [
+    {
+      "id": "bc_clone_t0_75",
+      "type": "bc_clone",
+      "temperature": 0.75,
+      "snapshot_step": null
+    },
+    {
+      "id": "bc_clone_t1_0",
+      "type": "bc_clone",
+      "temperature": 1.0,
+      "snapshot_step": null
+    },
+    {
+      "id": "bc_clone_t1_5",
+      "type": "bc_clone",
+      "temperature": 1.5,
+      "snapshot_step": null
+    },
+    {
+      "id": "scripted_onion",
+      "type": "scripted_greedy",
+      "ingredient": "onion",
+      "temperature": 1.0,
+      "snapshot_step": null
+    },
+    {
+      "id": "scripted_tomato",
+      "type": "scripted_greedy",
+      "ingredient": "tomato",
+      "temperature": 1.0,
+      "snapshot_step": null
+    }
+  ]
+}

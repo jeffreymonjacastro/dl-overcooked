@@ -11,21 +11,21 @@ policies:
     name: greedy_full_task
     ingredient: onion
     avoid_teammate: true
-    random_action_prob: 0.0
+    random_action_prob: 0
     max_action_time_ms: 100
     invalid_action: stay
     timeout_action: stay
   agent_1:
     type: builtin
     name: human_keyboard
-    random_action_prob: 0.0
+    random_action_prob: 0
     max_action_time_ms: 100
     invalid_action: stay
     timeout_action: stay
 execution:
   num_episodes: 1
   episode_seeds:
-  - 67
+    - 67
   swap_agent_positions: false
 observation:
   type: featurized

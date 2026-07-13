@@ -1,0 +1,44 @@
+seed: 67
+mode: debug
+environment:
+  layout_name: asymmetric_advantages
+  layout_file: null
+  horizon: 250
+  old_dynamics: true
+policies:
+  agent_0:
+    type: builtin
+    name: score_first_portfolio_v2
+    config:
+      layout_name: asymmetric_advantages
+      partner_name: greedy_full_task
+    random_action_prob: 0.0
+    sticky_action_prob: 0.0
+  agent_1:
+    type: builtin
+    name: greedy_full_task
+    ingredient: onion
+    avoid_teammate: true
+    random_action_prob: 0.0
+    sticky_action_prob: 0.0
+    max_action_time_ms: 100
+    invalid_action: stay
+    timeout_action: stay
+execution:
+  num_episodes: 2
+  episode_seeds: [67, 68]
+  swap_agent_positions: false
+observation:
+  type: featurized
+  include_agent_index: true
+rendering:
+  mode: window
+  fps: 10
+  window_caption: Scenario 4 - Score First V2 vs Random Motion
+  quit_keys: [escape, q]
+  save_gif: false
+logging:
+  output_dir: outputs/play_scenario_4_random_motion
+  save_step_log: true
+  save_episode_summary: true
+  save_trajectory_pickle: false

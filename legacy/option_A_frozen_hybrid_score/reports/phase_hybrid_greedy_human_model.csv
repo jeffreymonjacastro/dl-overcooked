@@ -1,0 +1,13 @@
+layout,partner,seeds,mean_return_sparse,std_return_sparse,num_rollouts,mean_soups,median_soups,zero_soup_rate,official_score_mean,first_soup_t_mean,last_soup_t_mean
+cramped_room,stay,67|68|69|70|71,44.0,44.54211490264017,10.0,2.2,4.0,0.5,22231.5,49.0,223.8
+cramped_room,random_motion,67|68|69|70|71,94.0,9.16515138991168,10.0,4.7,5.0,0.0,47365.3,45.7,233.9
+cramped_room,greedy_full_task,67|68|69|70|71,128.0,9.797958971132712,10.0,6.4,6.0,0.0,64403.1,38.9,230.8
+cramped_room,greedy_full_task_noise_015,67|68|69|70|71,108.0,16.0,10.0,5.4,6.0,0.0,54520.1,41.9,218.8
+coordination_ring,stay,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+coordination_ring,random_motion,67|68|69|70|71,50.0,13.416407864998739,10.0,2.5,3.0,0.0,25562.2,107.8,208.0
+coordination_ring,greedy_full_task,67|68|69|70|71,112.0,37.094473981982816,10.0,5.6,6.0,0.0,56736.4,53.6,196.0
+coordination_ring,greedy_full_task_noise_015,67|68|69|70|71,114.0,15.620499351813308,10.0,5.7,6.0,0.0,57444.1,56.9,224.9
+forced_coordination,stay,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,random_motion,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,greedy_full_task,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,greedy_full_task_noise_015,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0

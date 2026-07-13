@@ -1,0 +1,17 @@
+{
+  "layout": "simple_o",
+  "source": "builtin",
+  "layout_file": "",
+  "episodes": 10,
+  "mean_soups": 12.0,
+  "median_soups": 12.0,
+  "p_at_least_1_soup": 1.0,
+  "zero_rate": 0.0,
+  "official_score_mean": 120407.0,
+  "official_score_p10": 120407.0,
+  "min_soups": 12.0,
+  "max_soups": 12.0,
+  "output_dir": "C:\\Users\\USER\\Desktop\\DL_FINAL\\dl-overcooked\\outputs\\layout_sweep_score_first_portfolio\\simple_o",
+  "status": "OK",
+  "notes": ""
+}

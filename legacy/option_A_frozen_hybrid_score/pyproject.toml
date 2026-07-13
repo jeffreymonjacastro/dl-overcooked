@@ -1,0 +1,17 @@
+[project]
+name = "dl-overcooked"
+version = "0.1.0"
+description = "Overcooked-AI demonstration collection project"
+readme = "README.md"
+requires-python = "==3.10.*"
+dependencies = [
+    "overcooked-ai>=1.1.0",
+    "numpy<2",
+    "PyYAML>=6.0",
+    "Pillow>=10.0",
+    "imageio>=2.31",
+    "scipy",
+]
+
+[tool.uv]
+package = false

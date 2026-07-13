@@ -1,0 +1,13 @@
+.venv/
+.env/
+.venv*/
+.pip-cache/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+outputs/
+artifacts/option_a/teacher_rollouts/
+*.tmp

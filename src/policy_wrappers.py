@@ -80,6 +80,45 @@ class EpsilonActionWrapper(Agent):
         return action, info
 
 
+class StickyActionWrapper(Agent):
+    """With probability p, repeat the previously executed action."""
+
+    def __init__(self, base_agent: Agent, sticky_action_prob: float = 0.0, seed: int | None = None):
+        super().__init__()
+        self.base_agent = base_agent
+        self.sticky_action_prob = float(sticky_action_prob)
+        self.rng = np.random.default_rng(seed)
+        self.previous_action = None
+
+    def reset(self):
+        super().reset()
+        self.previous_action = None
+        if hasattr(self, "base_agent"):
+            self.base_agent.reset()
+
+    def set_agent_index(self, agent_index):
+        super().set_agent_index(agent_index)
+        self.base_agent.set_agent_index(agent_index)
+
+    def set_mdp(self, mdp):
+        super().set_mdp(mdp)
+        self.base_agent.set_mdp(mdp)
+
+    def action(self, state):
+        action, info = self.base_agent.action(state)
+        info = dict(info or {})
+        sticky_override = (
+            self.previous_action is not None
+            and self.sticky_action_prob > 0
+            and self.rng.random() < self.sticky_action_prob
+        )
+        if sticky_override:
+            action = self.previous_action
+        self.previous_action = action
+        info["sticky_override"] = sticky_override
+        return action, info
+
+
 class SafeActionWrapper(Agent):
     """Handle invalid actions and slow policies.
 
@@ -198,7 +237,7 @@ def coerce_action_index(action_like: str | int) -> int:
 
 def wrap_agent(base_agent: Agent, config: dict[str, Any], seed: int | None = None) -> Agent:
     """Apply safety and random-action wrappers according to YAML config."""
-    safe = SafeActionWrapper(
+    wrapped = SafeActionWrapper(
         base_agent,
         max_action_time_ms=config.get("max_action_time_ms", 100),
         invalid_action=config.get("invalid_action", "stay"),
@@ -206,5 +245,8 @@ def wrap_agent(base_agent: Agent, config: dict[str, Any], seed: int | None = Non
     )
     epsilon = float(config.get("random_action_prob", 0.0) or 0.0)
     if epsilon > 0:
-        return EpsilonActionWrapper(safe, random_action_prob=epsilon, seed=seed)
-    return safe
+        wrapped = EpsilonActionWrapper(wrapped, random_action_prob=epsilon, seed=seed)
+    sticky = float(config.get("sticky_action_prob", 0.0) or 0.0)
+    if sticky > 0:
+        wrapped = StickyActionWrapper(wrapped, sticky_action_prob=sticky, seed=None if seed is None else seed + 7919)
+    return wrapped

@@ -1,0 +1,65 @@
+seed: 67
+mode: evaluation
+environment:
+  layout_name: cramped_room
+  layout_file: null
+  horizon: 250
+  old_dynamics: true
+policies:
+  agent_0:
+    type: python_class
+    path: policies/template.py
+    class_name: StudentAgent
+    name: option_a2_router
+    config:
+      mode: option_a2_router
+      layout_name: cramped_room
+      partner_name: greedy_full_task
+      default_expert: a1
+      experts:
+        a1:
+          model_config_path: artifacts/option_a_baseline_before_a2/option_a/final_policy_config.json
+          checkpoint_path: artifacts/option_a_baseline_before_a2/option_a/final_policy.npz
+        a2:
+          model_config_path: artifacts/option_a2/final_policy_config.json
+          checkpoint_path: artifacts/option_a2/final_policy.npz
+      rules:
+        - layout_name: cramped_room
+          partner_name: greedy_full_task
+          expert: a2
+        - layout_name: cramped_room
+          partner_name: greedy_full_task_noise_015
+          expert: a2
+        - layout_name: "*"
+          partner_name: "*"
+          expert: a1
+    random_action_prob: 0.0
+    max_action_time_ms: 100
+    invalid_action: stay
+    timeout_action: stay
+  agent_1:
+    type: builtin
+    name: greedy_full_task
+    ingredient: onion
+    avoid_teammate: true
+    random_action_prob: 0.0
+    max_action_time_ms: 100
+    invalid_action: stay
+    timeout_action: stay
+execution:
+  num_episodes: 5
+  episode_seeds: [67, 68, 69, 70, 71]
+  swap_agent_positions: true
+observation:
+  type: featurized
+  include_agent_index: true
+rendering:
+  mode: none
+  fps: 0
+  save_gif: false
+logging:
+  output_dir: outputs/evaluation_option_a2_router
+  save_step_log: true
+  save_episode_summary: true
+  save_trajectory_pickle: false
+

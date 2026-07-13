@@ -1,0 +1,3 @@
+policy,layout,partner,num_rollouts,attempts,p_at_least_1_soup,p_group_mean_ge_1,p_group_mean_ge_2,p_group_mean_ge_3,mean_soups,median_soups,p10_soups,official_score_mean,official_score_p10,zero_rate,role0_mean_soups,role1_mean_soups,worst_role_mean_soups,output_dir
+greedy_full_task,cramped_room,stay,6,6.0,0.5,0.0,0.0,0.0,0.5,0.5,0.0,6155.0,0.0,0.5,1.0,0.0,0.0,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\competition_protocol\greedy_full_task_cramped_room_stay
+greedy_full_task,coordination_ring,stay,6,6.0,0.5,1.0,0.5,0.0,2.0,2.0,0.0,20301.5,0.0,0.5,0.0,4.0,0.0,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\competition_protocol\greedy_full_task_coordination_ring_stay

@@ -1,0 +1,13 @@
+layout,partner,seeds,mean_return_sparse,std_return_sparse,num_rollouts,mean_soups,median_soups,zero_soup_rate,official_score_mean,first_soup_t_mean,last_soup_t_mean
+cramped_room,stay,67|68|69,86.66666666666667,9.428090415820634,3.0,4.333333333333333,4.0,0.0,43838.0,48.666666666666664,219.66666666666666
+cramped_room,random_motion,67|68|69,100.0,0.0,3.0,5.0,5.0,0.0,50484.333333333336,45.666666666666664,222.0
+cramped_room,greedy_full_task,67|68|69,120.0,0.0,3.0,6.0,6.0,0.0,60458.0,42.0,225.0
+cramped_room,greedy_full_task_noise_015,67|68|69,106.66666666666667,18.856180831641264,3.0,5.333333333333333,6.0,0.0,53779.666666666664,43.666666666666664,226.0
+coordination_ring,stay,67|68|69,0.0,0.0,3.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+coordination_ring,random_motion,67|68|69,73.33333333333333,9.428090415820634,3.0,3.6666666666666665,4.0,0.0,36982.0,108.0,232.66666666666666
+coordination_ring,greedy_full_task,67|68|69,160.0,0.0,3.0,8.0,8.0,0.0,80258.0,62.0,243.0
+coordination_ring,greedy_full_task_noise_015,67|68|69,120.0,0.0,3.0,6.0,6.0,0.0,60373.666666666664,53.0,232.33333333333334
+forced_coordination,stay,67|68|69,0.0,0.0,3.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,random_motion,67|68|69,0.0,0.0,3.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,greedy_full_task,67|68|69,0.0,0.0,3.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,greedy_full_task_noise_015,67|68|69,0.0,0.0,3.0,0.0,0.0,1.0,0.0,-1.0,-1.0

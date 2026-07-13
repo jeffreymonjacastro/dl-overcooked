@@ -1,0 +1,17 @@
+{
+  "layout": "centre_pots",
+  "source": "builtin",
+  "layout_file": "",
+  "episodes": 10,
+  "mean_soups": 8.0,
+  "median_soups": 8.0,
+  "p_at_least_1_soup": 1.0,
+  "zero_rate": 0.0,
+  "official_score_mean": 80526.0,
+  "official_score_p10": 80526.0,
+  "min_soups": 8.0,
+  "max_soups": 8.0,
+  "output_dir": "C:\\Users\\USER\\Desktop\\DL_FINAL\\dl-overcooked\\outputs\\layout_sweep_score_first_portfolio\\centre_pots",
+  "status": "OK",
+  "notes": ""
+}

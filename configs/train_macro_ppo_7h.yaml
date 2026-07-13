@@ -1,0 +1,28 @@
+model:
+  feature_dim: 64
+  hidden_dim: 128
+training:
+  prefer_cuda: true
+  max_wall_hours: 7
+  smoke_steps: 200
+  macro_decisions_target_min: 100000
+  macro_decisions_target_max: 300000
+  batch_size: 4096
+  lr: 0.0003
+evaluation:
+  seeds: [67, 68, 69]
+  role_swap: true
+  selection:
+    primary: official_scenario_score
+    tie_breakers:
+      - mean_soups
+      - zero_rate
+      - p10_score
+      - worst_role
+promotion_gates:
+  baseline_policy: adaptive_competition
+  min_mean_soups: 3.5833
+  min_official_score_mean: 36126.39
+  max_zero_rate: 0.3472
+  require_zero_timeouts: true
+

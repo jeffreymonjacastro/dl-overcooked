@@ -1,0 +1,17 @@
+{
+  "layout": "scenario3",
+  "source": "builtin",
+  "layout_file": "",
+  "episodes": 10,
+  "mean_soups": 4.0,
+  "median_soups": 4.0,
+  "p_at_least_1_soup": 1.0,
+  "zero_rate": 0.0,
+  "official_score_mean": 41035.0,
+  "official_score_p10": 41035.0,
+  "min_soups": 4.0,
+  "max_soups": 4.0,
+  "output_dir": "C:\\Users\\USER\\Desktop\\DL_FINAL\\dl-overcooked\\outputs\\layout_sweep_score_first_portfolio\\scenario3",
+  "status": "OK",
+  "notes": ""
+}

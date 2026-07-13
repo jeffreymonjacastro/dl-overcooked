@@ -1,0 +1,4 @@
+workers,decision_scope,result,notes
+8,macro_smoke,stable,current runner is serial for environment stepping; workers are a future vector-env setting
+16,macro_smoke,stable,current runner is serial for environment stepping; workers are a future vector-env setting
+32,macro_smoke,stable,current runner is serial for environment stepping; RTX smoke recommended 23 CPU workers if vectorized rollouts are enabled

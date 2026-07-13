@@ -1,0 +1,17 @@
+{
+  "layout": "asymmetric_advantages",
+  "source": "builtin",
+  "layout_file": "",
+  "episodes": 10,
+  "mean_soups": 5.9,
+  "median_soups": 6.0,
+  "p_at_least_1_soup": 1.0,
+  "zero_rate": 0.0,
+  "official_score_mean": 59401.9,
+  "official_score_p10": 59333.2,
+  "min_soups": 5.0,
+  "max_soups": 6.0,
+  "output_dir": "C:\\Users\\USER\\Desktop\\DL_FINAL\\dl-overcooked\\outputs\\layout_sweep_score_first_portfolio\\asymmetric_advantages",
+  "status": "OK",
+  "notes": ""
+}

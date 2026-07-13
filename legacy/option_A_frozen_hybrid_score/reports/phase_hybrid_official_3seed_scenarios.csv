@@ -1,0 +1,13 @@
+layout,partner,num_attempts,score_seed_1,score_seed_2,score_seed_3,scenario_score_mean,scenario_score_std,scenario_score_min,mean_soups,zero_soup_attempts
+coordination_ring,greedy_full_task,3,80258.0,80258.0,80258.0,80258.0,0.0,80258.0,8.0,0
+coordination_ring,greedy_full_task_noise_015,3,60206.0,60497.0,60418.0,60373.666666666664,122.86668475311858,60206.0,6.0,0
+coordination_ring,random_motion,3,30143.0,40395.0,40408.0,36982.0,4835.906188778548,30143.0,3.6666666666666665,0
+coordination_ring,stay,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3
+cramped_room,greedy_full_task,3,60476.0,60478.0,60420.0,60458.0,26.882460204874604,60420.0,6.0,0
+cramped_room,greedy_full_task_noise_015,3,40496.0,60421.0,60422.0,53779.666666666664,9392.970787893584,40496.0,5.333333333333333,0
+cramped_room,random_motion,3,50530.0,50484.0,50439.0,50484.333333333336,37.15134213217905,50439.0,5.0,0
+cramped_room,stay,3,40679.0,40591.0,50244.0,43838.0,4529.868504346088,40591.0,4.333333333333333,0
+forced_coordination,greedy_full_task,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3
+forced_coordination,greedy_full_task_noise_015,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3
+forced_coordination,random_motion,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3
+forced_coordination,stay,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3

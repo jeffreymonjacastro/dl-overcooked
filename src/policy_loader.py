@@ -10,8 +10,11 @@ from typing import Any
 
 from overcooked_ai_py.agents.agent import GreedyHumanModel, RandomAgent, StayAgent
 
-from policies.basic_policies import GreedyFullTaskPolicy, RandomMotionPolicy, StayPolicy
+from policies.adaptive_competition_policy import AdaptiveCompetitionPolicy
+from policies.basic_policies import GreedyFullTaskPolicy, HybridOfficialScorePolicy, RandomMotionPolicy, RecipeAwareGreedyPolicy, StayPolicy
 from policies.human_keyboard_policy import HumanKeyboardPolicy
+from policies.score_first_portfolio_policy import ScoreFirstPortfolioPolicy
+from policies.shortppo_policy import AdaptiveCompetitionShortPPOPolicy
 
 from src.observations import ObservationBuilder
 from src.policy_wrappers import StudentAgentAdapter, wrap_agent
@@ -53,6 +56,45 @@ def build_builtin_agent(name: str, env, policy_config: dict[str, Any] | None = N
             avoid_teammate=policy_config.get("avoid_teammate", True),
             seed=policy_config.get("seed"),
         )
+    if key == "recipe_aware_greedy":
+        return RecipeAwareGreedyPolicy(
+            avoid_teammate=policy_config.get("avoid_teammate", True),
+            seed=policy_config.get("seed"),
+        )
+    if key == "hybrid_official_score":
+        context = policy_config.get("config", {}) or {}
+        return HybridOfficialScorePolicy(
+            env.mlam,
+            layout_name=context.get("layout_name", policy_config.get("layout_name")),
+            partner_name=context.get("partner_name", policy_config.get("partner_name")),
+            seed=policy_config.get("seed"),
+        )
+    if key == "adaptive_competition":
+        context = policy_config.get("config", {}) or {}
+        return AdaptiveCompetitionPolicy(
+            env.mlam,
+            layout_name=context.get("layout_name", policy_config.get("layout_name")),
+            partner_name=context.get("partner_name", policy_config.get("partner_name")),
+            seed=policy_config.get("seed"),
+        )
+    if key == "adaptive_competition_shortppo":
+        context = policy_config.get("config", {}) or {}
+        return AdaptiveCompetitionShortPPOPolicy(
+            env.mlam,
+            layout_name=context.get("layout_name", policy_config.get("layout_name")),
+            partner_name=context.get("partner_name", policy_config.get("partner_name")),
+            seed=policy_config.get("seed"),
+            params_path=context.get("params_path", policy_config.get("params_path")),
+            params=context.get("params", policy_config.get("params")),
+        )
+    if key == "score_first_portfolio":
+        context = policy_config.get("config", {}) or {}
+        return ScoreFirstPortfolioPolicy(
+            env.mlam,
+            layout_name=context.get("layout_name", policy_config.get("layout_name")),
+            partner_name=context.get("partner_name", policy_config.get("partner_name")),
+            seed=policy_config.get("seed"),
+        )
     if key == "human_keyboard":
         return HumanKeyboardPolicy(
             keymap=policy_config.get("keymap"),
@@ -67,7 +109,9 @@ def build_builtin_agent(name: str, env, policy_config: dict[str, Any] | None = N
 
     raise PolicyLoadError(
         f"Unknown builtin policy '{name}'. Valid builtins: "
-        "stay, random_motion, random, greedy_full_task, human_keyboard, greedy_human_model"
+        "stay, random_motion, random, greedy_full_task, recipe_aware_greedy, hybrid_official_score, "
+        "adaptive_competition, adaptive_competition_shortppo, score_first_portfolio, "
+        "human_keyboard, greedy_human_model"
     )
 
 

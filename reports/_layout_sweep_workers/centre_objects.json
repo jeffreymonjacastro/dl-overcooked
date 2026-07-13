@@ -1,0 +1,17 @@
+{
+  "layout": "centre_objects",
+  "source": "builtin",
+  "layout_file": "",
+  "episodes": 10,
+  "mean_soups": 1.0,
+  "median_soups": 1.0,
+  "p_at_least_1_soup": 1.0,
+  "zero_rate": 0.0,
+  "official_score_mean": 12343.0,
+  "official_score_p10": 12343.0,
+  "min_soups": 1.0,
+  "max_soups": 1.0,
+  "output_dir": "C:\\Users\\USER\\Desktop\\DL_FINAL\\dl-overcooked\\outputs\\layout_sweep_score_first_portfolio\\centre_objects",
+  "status": "LOW",
+  "notes": "It delivers soups but too slowly; this layout needs layout-specific routing optimization."
+}

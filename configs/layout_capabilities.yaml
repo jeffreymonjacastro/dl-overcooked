@@ -1,0 +1,31 @@
+layouts:
+  cramped_room:
+    solo_possible: true
+    forced_cooperation: false
+    narrow_corridors: true
+    handoff_required: false
+    custom_layout_available: false
+    tested_seeds: [67, 68, 69, 70, 71]
+    tested_roles: [0, 1]
+    best_known_policy: hybrid_official_score
+    classification: SOLVABLE_SOLO
+  coordination_ring:
+    solo_possible: true
+    forced_cooperation: false
+    narrow_corridors: true
+    handoff_required: false
+    custom_layout_available: false
+    tested_seeds: [67, 68, 69, 70, 71]
+    tested_roles: [0, 1]
+    best_known_policy: hybrid_official_score
+    classification: SOLVABLE_WITH_HELP
+  forced_coordination:
+    solo_possible: false
+    forced_cooperation: true
+    narrow_corridors: true
+    handoff_required: true
+    custom_layout_available: false
+    tested_seeds: [67, 68, 69, 70, 71]
+    tested_roles: [0, 1]
+    best_known_policy: unresolved
+    classification: FORCED_COOPERATION

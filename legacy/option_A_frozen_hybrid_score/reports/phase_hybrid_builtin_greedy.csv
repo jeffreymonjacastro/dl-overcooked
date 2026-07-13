@@ -1,0 +1,13 @@
+layout,partner,seeds,mean_return_sparse,std_return_sparse,num_rollouts,mean_soups,median_soups,zero_soup_rate,official_score_mean,first_soup_t_mean,last_soup_t_mean
+cramped_room,stay,67|68|69|70|71,10.0,10.0,10.0,0.5,1.0,0.5,6155.0,40.0,40.0
+cramped_room,random_motion,67|68|69|70|71,98.0,6.0,10.0,4.9,5.0,0.0,49542.7,41.3,216.6
+cramped_room,greedy_full_task,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+cramped_room,greedy_full_task_noise_015,67|68|69|70|71,86.0,26.90724809414742,10.0,4.3,4.0,0.0,43592.8,67.2,209.0
+coordination_ring,stay,67|68|69|70|71,40.0,40.0,10.0,2.0,4.0,0.5,20301.5,87.0,206.0
+coordination_ring,random_motion,67|68|69|70|71,76.0,8.0,10.0,3.8,4.0,0.0,38280.0,104.0,236.6
+coordination_ring,greedy_full_task,67|68|69|70|71,160.0,0.0,10.0,8.0,8.0,0.0,80258.0,62.0,243.0
+coordination_ring,greedy_full_task_noise_015,67|68|69|70|71,80.0,43.81780460041329,10.0,4.0,6.0,0.1,40840.5,69.44444444444444,174.66666666666666
+forced_coordination,stay,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,random_motion,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,greedy_full_task,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0
+forced_coordination,greedy_full_task_noise_015,67|68|69|70|71,0.0,0.0,10.0,0.0,0.0,1.0,0.0,-1.0,-1.0

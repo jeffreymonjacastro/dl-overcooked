@@ -1,0 +1,6 @@
+layout,baseline_mean_soups,v2_mean_soups,delta_soups,baseline_official_score_mean,v2_official_score_mean,delta_score,baseline_zero_rate,v2_zero_rate,promoted
+centre_objects,1.0,5.0,4.0,12343.0,50505.0,38162.0,0.0,0.0,True
+cramped_room_o_3orders,0.0,5.0,5.0,0.0,50450.0,50450.0,1.0,0.0,True
+scenario2_s,1.0,5.6,4.6,12332.0,56372.3,44040.3,0.0,0.0,True
+unident,1.0,5.9,4.9,12200.0,59281.7,47081.7,0.0,0.0,True
+large_room,0.0,5.1,5.1,0.0,51423.6,51423.6,1.0,0.0,True

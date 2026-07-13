@@ -1,0 +1,45 @@
+layout,source,layout_file,episodes,mean_soups,median_soups,p_at_least_1_soup,zero_rate,official_score_mean,official_score_p10,min_soups,max_soups,status,notes,output_dir
+asymmetric_advantages,builtin,,10,5.9,6.0,1.0,0.0,59401.9,59333.2,5.0,6.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\asymmetric_advantages
+asymmetric_advantages_tomato,builtin,,10,3.0,3.0,1.0,0.0,32079.0,32079.0,3.0,3.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\asymmetric_advantages_tomato
+bonus_order_test,builtin,,10,5.0,5.0,1.0,0.0,50579.0,50568.0,5.0,5.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\bonus_order_test
+bottleneck,builtin,,10,4.0,4.0,1.0,0.0,40347.0,40347.0,4.0,4.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\bottleneck
+centre_objects,builtin,,10,5.0,5.0,1.0,0.0,50505.0,50422.0,5.0,5.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\centre_objects
+centre_pots,builtin,,10,8.0,8.0,1.0,0.0,80526.0,80526.0,8.0,8.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\centre_pots
+chavez_room,file,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\configs\layouts\chavez_room.layout,10,8.0,8.0,1.0,0.0,80733.0,80708.0,8.0,8.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\chavez_room
+coordination_ring,builtin,,10,8.0,8.0,1.0,0.0,80258.0,80258.0,8.0,8.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\coordination_ring
+counter_circuit,builtin,,10,5.0,5.0,1.0,0.0,50955.0,50955.0,5.0,5.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\counter_circuit
+counter_circuit_o_1order,builtin,,10,3.0,3.0,1.0,0.0,31066.0,31066.0,3.0,3.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\counter_circuit_o_1order
+cramped_corridor,builtin,,10,3.0,3.0,1.0,0.0,31298.0,31298.0,3.0,3.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\cramped_corridor
+cramped_room,builtin,,10,6.2,6.0,1.0,0.0,62428.1,60414.1,6.0,7.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\cramped_room
+cramped_room_o_3orders,builtin,,10,5.0,5.0,1.0,0.0,50450.0,50371.0,5.0,5.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\cramped_room_o_3orders
+cramped_room_tomato,builtin,,10,8.0,8.0,1.0,0.0,80569.0,80550.0,8.0,8.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\cramped_room_tomato
+diagonal_run,file,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\configs\layouts\diagonal_run.layout,10,16.0,16.0,1.0,0.0,160519.0,160519.0,16.0,16.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\diagonal_run
+five_by_five,builtin,,10,6.0,6.0,1.0,0.0,60384.0,60384.0,6.0,6.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\five_by_five
+forced_coordination,builtin,,10,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,LOW,0 soups in every measured seed; current routing/partner pairing cannot complete this layout.,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\forced_coordination
+forced_coordination_tomato,builtin,,10,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,LOW,0 soups in every measured seed; current routing/partner pairing cannot complete this layout.,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\forced_coordination_tomato
+inverse_marshmallow_experiment,builtin,,10,18.0,18.0,1.0,0.0,180323.0,180323.0,18.0,18.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\inverse_marshmallow_experiment
+jamcy_room,file,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\configs\layouts\jamcy_room.layout,10,11.2,11.0,1.0,0.0,113088.0,61660.0,6.0,16.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\jamcy_room
+large_room,builtin,,10,5.1,5.5,1.0,0.0,51423.6,40520.9,4.0,6.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\large_room
+long_cook_time,builtin,,10,1.0,1.0,1.0,0.0,11287.0,11287.0,1.0,1.0,LOW,It delivers soups but too slowly; this layout needs layout-specific routing optimization.,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\long_cook_time
+marshmallow_experiment,builtin,,10,24.0,24.0,1.0,0.0,240737.0,240737.0,24.0,24.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\marshmallow_experiment
+marshmallow_experiment_coordination,builtin,,10,12.0,12.0,1.0,0.0,121036.0,121036.0,12.0,12.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\marshmallow_experiment_coordination
+mdp_test,builtin,,10,4.8,6.0,1.0,0.0,49888.8,22262.7,2.0,6.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\mdp_test
+m_room,file,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\configs\layouts\m_room.layout,10,10.0,10.0,1.0,0.0,100205.6,100201.0,10.0,10.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\m_room
+m_shaped_s,builtin,,10,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,LOW,0 soups in every measured seed; current routing/partner pairing cannot complete this layout.,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\m_shaped_s
+pipeline,builtin,,10,6.0,6.0,1.0,0.0,60729.0,60729.0,6.0,6.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\pipeline
+scenario1_s,builtin,,10,4.0,4.0,1.0,0.0,40347.0,40347.0,4.0,4.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\scenario1_s
+scenario2,builtin,,10,6.0,6.0,1.0,0.0,60399.0,60399.0,6.0,6.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\scenario2
+scenario2_s,builtin,,10,5.6,6.0,1.0,0.0,56372.3,50519.5,5.0,6.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\scenario2_s
+scenario3,builtin,,10,4.0,4.0,1.0,0.0,41035.0,41035.0,4.0,4.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\scenario3
+scenario4,builtin,,10,4.0,4.0,1.0,0.0,40537.0,40537.0,4.0,4.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\scenario4
+schelling,builtin,,10,7.7,8.0,1.0,0.0,77313.1,70382.9,7.0,8.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\schelling
+schelling_s,builtin,,10,9.1,9.0,1.0,0.0,91325.5,80372.7,8.0,10.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\schelling_s
+simple_o,builtin,,10,12.0,12.0,1.0,0.0,120407.0,120407.0,12.0,12.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\simple_o
+simple_o_t,builtin,,10,12.0,12.0,1.0,0.0,120407.0,120407.0,12.0,12.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\simple_o_t
+simple_tomato,builtin,,10,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,LOW,0 soups in every measured seed; current routing/partner pairing cannot complete this layout.,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\simple_tomato
+small_corridor,builtin,,10,1.0,1.0,1.0,0.0,11111.0,11111.0,1.0,1.0,LOW,It delivers soups but too slowly; this layout needs layout-specific routing optimization.,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\small_corridor
+soup_coordination,builtin,,10,14.0,14.0,1.0,0.0,140336.0,140336.0,14.0,14.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\soup_coordination
+tutorial_0,builtin,,10,18.0,18.0,1.0,0.0,180664.0,180664.0,18.0,18.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\tutorial_0
+tutorial_2,builtin,,10,18.0,18.0,1.0,0.0,180664.0,180664.0,18.0,18.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\tutorial_2
+tutorial_3,builtin,,10,18.0,18.0,1.0,0.0,180664.0,180664.0,18.0,18.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\tutorial_3
+unident,builtin,,10,5.9,6.0,1.0,0.0,59281.7,59234.3,5.0,6.0,OK,,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\outputs\layout_sweep_score_first_portfolio_v2\unident

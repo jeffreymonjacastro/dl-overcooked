@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.score_official import calculate_attempt_score, calculate_scenario_score
+from scripts.score_official import calculate_attempt_score, calculate_scenario_score, score_steps_rows
 
 
 class ScoreOfficialTests(unittest.TestCase):
@@ -44,6 +44,15 @@ class ScoreOfficialTests(unittest.TestCase):
     def test_invalid_missing_timesteps_for_positive_soups(self):
         with self.assertRaises(ValueError):
             calculate_attempt_score(1, 250, None, 100, 0)
+
+    def test_low_value_positive_reward_counts_as_soup(self):
+        rows = [
+            {"timestep": "10", "reward": "0"},
+            {"timestep": "184", "reward": "10"},
+        ]
+        score = score_steps_rows(rows, horizon=250)
+        self.assertEqual(score.soups, 1)
+        self.assertEqual(score.first_soup_timestep, 184)
 
 
 if __name__ == "__main__":

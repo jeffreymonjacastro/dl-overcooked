@@ -108,6 +108,7 @@ def builtin_policy(name: str, layout: str, partner: str, seed: int) -> dict[str,
         "adaptive_competition",
         "adaptive_competition_shortppo",
         "score_first_portfolio",
+        "score_first_portfolio_v2",
     }:
         cfg["config"] = {"layout_name": layout, "partner_name": partner}
     return cfg
@@ -189,7 +190,7 @@ def make_config(
 def evaluate_one(args: argparse.Namespace) -> int:
     seeds = parse_seeds(args.seeds)
     layout_file = Path(args.layout_file) if args.layout_file else None
-    output_dir = REPO_ROOT / "outputs" / "layout_sweep_score_first_portfolio" / args.layout
+    output_dir = REPO_ROOT / "outputs" / f"layout_sweep_{args.policy}" / args.layout
     result_path = Path(args.result_path)
     result_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -388,9 +389,9 @@ def run_parent(args: argparse.Namespace) -> int:
         )
 
     report_dir = REPO_ROOT / "reports"
-    result_csv = report_dir / "layout_sweep_score_first_portfolio.csv"
-    omitted_csv = report_dir / "layout_sweep_omitted.csv"
-    report_md = report_dir / "LAYOUT_SWEEP_SCORE_FIRST_PORTFOLIO.md"
+    result_csv = report_dir / f"layout_sweep_{args.policy}.csv"
+    omitted_csv = report_dir / f"layout_sweep_{args.policy}_omitted.csv"
+    report_md = report_dir / f"LAYOUT_SWEEP_{args.policy.upper()}.md"
 
     if rows:
         write_csv(

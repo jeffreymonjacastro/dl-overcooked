@@ -1,0 +1,7 @@
+layout,reason,path
+corridor,timeout after 90s; current planner/policy is too slow here,
+cramped_room_single,IndexError: tuple index out of range,
+maze_kitchen,ValueError: 'recipe_values' incompatible with '<ingredient>_value',C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\configs\layouts\maze_kitchen.layout
+multiplayer_schelling,"MemoryError: Unable to allocate 337. GiB for an array with shape (212520, 212520) and data type float64",
+tutorial_1,ValueError: Recipe class must be configured before recipes can be created,
+you_shall_not_pass,timeout after 90s; current planner/policy is too slow here,

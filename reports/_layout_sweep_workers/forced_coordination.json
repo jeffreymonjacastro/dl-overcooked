@@ -11,7 +11,7 @@
   "official_score_p10": 0.0,
   "min_soups": 0.0,
   "max_soups": 0.0,
-  "output_dir": "C:\\Users\\USER\\Desktop\\DL_FINAL\\dl-overcooked\\outputs\\layout_sweep_score_first_portfolio\\forced_coordination",
+  "output_dir": "C:\\Users\\USER\\Desktop\\DL_FINAL\\dl-overcooked\\outputs\\layout_sweep_score_first_portfolio_v2\\forced_coordination",
   "status": "LOW",
   "notes": "0 soups in every measured seed; current routing/partner pairing cannot complete this layout."
 }

@@ -95,8 +95,10 @@ def score_steps_rows(rows: list[dict[str, str]], horizon: int, timeouts: int = 0
     """Score one rollout from logged steps.csv rows.
 
     The local runner logs sparse step reward but not an explicit delivery event.
-    In Overcooked-AI, a soup delivery gives sparse reward 20, so positive sparse
-    reward / 20 is the validated soup count proxy used here.
+    Most default layouts give sparse reward 20 per soup, but custom recipes can
+    set lower values, such as 10. Any positive sparse reward therefore proves at
+    least one delivery on that timestep; larger multiples still count as
+    multiple soups for compatibility with the default reward scale.
     """
     soup_timesteps: list[int] = []
     soup_count = 0
@@ -104,7 +106,7 @@ def score_steps_rows(rows: list[dict[str, str]], horizon: int, timeouts: int = 0
         reward = float(row.get("reward", 0.0) or 0.0)
         if reward <= 0:
             continue
-        delivered = int(round(reward / SOUP_REWARD))
+        delivered = max(1, int(round(reward / SOUP_REWARD)))
         if delivered <= 0:
             continue
         soup_count += delivered

@@ -1,0 +1,130 @@
+# Incremental route table. Do not edit protected routes without rerunning the
+# revealed scenario regression suite.
+protected_routes:
+  asymmetric_advantages:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    reason: revealed_scenario_1_passed_10_of_10_groups
+  counter_circuit:
+    partner_condition: greedy_full_task
+    policy: recipe_aware_greedy
+    reason: revealed_scenario_3_passed_10_of_10_groups
+
+promoted_routes:
+  bonus_order_test:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 5.0
+    candidate_mean_score_probe: 50579.0
+  bottleneck:
+    partner_condition: greedy_full_task
+    policy: bottleneck_kickstart
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 4.0
+  centre_objects:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 1.0
+    candidate_mean_soups_probe: 5.0
+  chavez_room:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 8.0
+  cramped_room_o_3orders:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 5.0
+  cramped_room_tomato:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 8.0
+  cramped_corridor:
+    partner_condition: greedy_full_task
+    policy: stay
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 3.0
+  diagonal_run:
+    partner_condition: greedy_full_task
+    policy: greedy_full_task_tomato
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 16.0
+  jamcy_room:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 12.0
+  mdp_test:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 3.3333
+  m_room:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 10.0
+  scenario2_s:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 1.0
+    candidate_mean_soups_probe: 5.3333
+  scenario1_s:
+    partner_condition: greedy_full_task
+    policy: bottleneck_kickstart
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 4.0
+  schelling:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 7.6667
+  schelling_s:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 9.6667
+  soup_coordination:
+    partner_condition: greedy_full_task
+    policy: recipe_aware_greedy
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 14.0
+  pipeline:
+    partner_condition: greedy_full_task
+    policy: greedy_full_task_tomato
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 6.0
+  scenario4:
+    partner_condition: greedy_full_task
+    policy: scenario4_yield
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 4.0
+  unident:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 1.0
+    candidate_mean_soups_probe: 6.0
+  large_room:
+    partner_condition: greedy_full_task
+    policy: greedy_human_model
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 5.6667
+
+partial_routes:
+  long_cook_time:
+    partner_condition: greedy_full_task
+    policy: long_cook_time_assist
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 1.0
+    candidate_mean_score_probe: 11287.0
+    note: "cook_time=100 with a single pot; starts a one-onion soup early and yields pickup tile, but remains below the 3-soup target"
+  small_corridor:
+    partner_condition: greedy_full_task
+    policy: small_corridor_handoff
+    baseline_mean_soups: 0.0
+    candidate_mean_soups_probe: 1.0
+    candidate_mean_score_probe: 11111.0
+    note: "exact handoff route delivers one soup at t=149 after compressing the first repeat handoff wait, but remains below the 3-soup target"

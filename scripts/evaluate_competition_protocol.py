@@ -33,6 +33,7 @@ def builtin_policy(name: str, layout: str, partner: str, seed: int):
         "adaptive_competition",
         "adaptive_competition_shortppo",
         "score_first_portfolio",
+        "score_first_portfolio_v2",
     }:
         cfg["config"] = {"layout_name": layout, "partner_name": partner}
         if name == "adaptive_competition_shortppo":

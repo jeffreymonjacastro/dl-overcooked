@@ -1,4 +1,0 @@
-checkpoint,policy,mean_soups,official_score_mean,zero_rate,worst_role_mean
-baseline,hybrid_official_score,3.125,31488.51388888889,0.4166666666666667,0.0
-baseline,adaptive_competition,3.5416666666666665,35686.27777777778,0.34722222222222215,0.0
-score_first_planner_v1,adaptive_competition_shortppo,3.5416666666666665,35686.27777777778,0.34722222222222215,0.0

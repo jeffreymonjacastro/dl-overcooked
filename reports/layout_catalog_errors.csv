@@ -1,3 +1,0 @@
-layout_name,layout_file,error
-maze_kitchen,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\configs\layouts\maze_kitchen.layout,"ValueError(""'recipe_values' incompatible with '<ingredient>_value'"")"
-maze_kitchen,C:\Users\USER\Desktop\DL_FINAL\dl-overcooked\data\Attention_t\Layouts\maze_kitchen.layout,"ValueError(""'recipe_values' incompatible with '<ingredient>_value'"")"

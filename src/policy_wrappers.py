@@ -45,16 +45,38 @@ class StudentAgentAdapter(Agent):
 
 
 class EpsilonActionWrapper(Agent):
-    """With probability epsilon, replace the base agent action by a uniform random action."""
+    """Apply reproducible sticky actions followed by random action replacement.
 
-    def __init__(self, base_agent: Agent, random_action_prob: float = 0.0, seed: int | None = None):
+    The historical class name is kept for backwards compatibility.  The order
+    is deliberately:
+
+    1. repeat the previous final action when sticky noise fires;
+    2. otherwise query the wrapped policy;
+    3. optionally replace that result with a uniform random action;
+    4. remember the final action for the next timestep.
+    """
+
+    def __init__(
+        self,
+        base_agent: Agent,
+        random_action_prob: float = 0.0,
+        sticky_action_prob: float = 0.0,
+        seed: int | None = None,
+    ):
         super().__init__()
         self.base_agent = base_agent
         self.random_action_prob = float(random_action_prob)
+        self.sticky_action_prob = float(sticky_action_prob)
+        if not 0.0 <= self.random_action_prob <= 1.0:
+            raise ValueError("random_action_prob must be in [0, 1]")
+        if not 0.0 <= self.sticky_action_prob <= 1.0:
+            raise ValueError("sticky_action_prob must be in [0, 1]")
         self.rng = np.random.default_rng(seed)
+        self.last_action = None
 
     def reset(self):
         super().reset()
+        self.last_action = None
         if hasattr(self, "base_agent"):
             self.base_agent.reset()
 
@@ -67,55 +89,27 @@ class EpsilonActionWrapper(Agent):
         self.base_agent.set_mdp(mdp)
 
     def action(self, state):
+        sticky_override = False
+        if self.last_action is not None and self.sticky_action_prob > 0:
+            sticky_override = bool(self.rng.random() < self.sticky_action_prob)
+
+        if sticky_override:
+            action = self.last_action
+            info = {"sticky_override": True}
+        else:
+            action, info = self.base_agent.action(state)
+            info = dict(info or {})
+            info["sticky_override"] = False
+
         if self.random_action_prob > 0 and self.rng.random() < self.random_action_prob:
             idx = int(self.rng.integers(0, NUM_ACTIONS))
-            return Action.INDEX_TO_ACTION[idx], {
-                "random_override": True,
-                "random_action_index": idx,
-            }
+            action = action_index_to_overcooked_action(idx)
+            info["random_override"] = True
+            info["random_action_index"] = idx
+        else:
+            info["random_override"] = False
 
-        action, info = self.base_agent.action(state)
-        info = dict(info or {})
-        info["random_override"] = False
-        return action, info
-
-
-class StickyActionWrapper(Agent):
-    """With probability p, repeat the previously executed action."""
-
-    def __init__(self, base_agent: Agent, sticky_action_prob: float = 0.0, seed: int | None = None):
-        super().__init__()
-        self.base_agent = base_agent
-        self.sticky_action_prob = float(sticky_action_prob)
-        self.rng = np.random.default_rng(seed)
-        self.previous_action = None
-
-    def reset(self):
-        super().reset()
-        self.previous_action = None
-        if hasattr(self, "base_agent"):
-            self.base_agent.reset()
-
-    def set_agent_index(self, agent_index):
-        super().set_agent_index(agent_index)
-        self.base_agent.set_agent_index(agent_index)
-
-    def set_mdp(self, mdp):
-        super().set_mdp(mdp)
-        self.base_agent.set_mdp(mdp)
-
-    def action(self, state):
-        action, info = self.base_agent.action(state)
-        info = dict(info or {})
-        sticky_override = (
-            self.previous_action is not None
-            and self.sticky_action_prob > 0
-            and self.rng.random() < self.sticky_action_prob
-        )
-        if sticky_override:
-            action = self.previous_action
-        self.previous_action = action
-        info["sticky_override"] = sticky_override
+        self.last_action = action
         return action, info
 
 
@@ -171,6 +165,19 @@ class SafeActionWrapper(Agent):
                 with time_limit(self.max_action_time_ms / 1000.0):
                     result = self._call_base_agent(state)
             elapsed_ms = 1000.0 * (time.perf_counter() - start)
+            # SIGALRM is unavailable on platforms such as Windows.  A call
+            # cannot be interrupted there, but a policy that eventually
+            # returns late must still be counted and replaced by the official
+            # timeout fallback.
+            if self.max_action_time_ms is not None and self.max_action_time_ms > 0:
+                if elapsed_ms > self.max_action_time_ms:
+                    self.timeout_count += 1
+                    action = action_index_to_overcooked_action(self.timeout_action_idx)
+                    return action, {
+                        "elapsed_ms": elapsed_ms,
+                        "timeout_action_replaced": True,
+                        "timeout_count": self.timeout_count,
+                    }
             result.info["elapsed_ms"] = elapsed_ms
             result.info["invalid_action_replaced"] = False
             result.info["timeout_action_replaced"] = False
@@ -236,17 +243,20 @@ def coerce_action_index(action_like: str | int) -> int:
 
 
 def wrap_agent(base_agent: Agent, config: dict[str, Any], seed: int | None = None) -> Agent:
-    """Apply safety and random-action wrappers according to YAML config."""
-    wrapped = SafeActionWrapper(
+    """Apply safety, sticky-action and random-action wrappers from YAML."""
+    safe = SafeActionWrapper(
         base_agent,
         max_action_time_ms=config.get("max_action_time_ms", 100),
         invalid_action=config.get("invalid_action", "stay"),
         timeout_action=config.get("timeout_action", "stay"),
     )
     epsilon = float(config.get("random_action_prob", 0.0) or 0.0)
-    if epsilon > 0:
-        wrapped = EpsilonActionWrapper(wrapped, random_action_prob=epsilon, seed=seed)
     sticky = float(config.get("sticky_action_prob", 0.0) or 0.0)
-    if sticky > 0:
-        wrapped = StickyActionWrapper(wrapped, sticky_action_prob=sticky, seed=None if seed is None else seed + 7919)
-    return wrapped
+    if epsilon > 0 or sticky > 0:
+        return EpsilonActionWrapper(
+            safe,
+            random_action_prob=epsilon,
+            sticky_action_prob=sticky,
+            seed=seed,
+        )
+    return safe

@@ -1,8 +1,0 @@
-{
-  "name": "score_first_planner_v1",
-  "source": "planner_parameter_search",
-  "reserved_dish_handoff": "nearest_dish_dispenser",
-  "forced_supplier_policy": "reserve_dish_counter_then_fill_ingredient_counters",
-  "notes": "ShortPPO candidate currently uses the best deterministic score-first planner; PPO smoke artifacts are not promoted unless they beat this score."
-}
-

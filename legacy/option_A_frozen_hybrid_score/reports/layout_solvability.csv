@@ -1,4 +1,0 @@
-layout,solo_possible,forced_cooperation,narrow_corridors,handoff_required,tested_seeds,tested_roles,best_known_policy,classification,evidence
-cramped_room,true,false,true,false,67|68|69|70|71,0|1,hybrid_official_score,SOLVABLE_SOLO,hybrid no-swap 3seed mean_soups=5.1667 across non-stay known/random/greedy cells
-coordination_ring,true,false,true,false,67|68|69|70|71,0|1,hybrid_official_score,SOLVABLE_WITH_HELP,hybrid role-swap 5seed mean_soups up to 8.0 with greedy and 4.0 with random
-forced_coordination,false,true,true,true,67|68|69|70|71,0|1,unresolved,FORCED_COOPERATION,all tested state-router candidates scored 0.0 mean_soups in no-swap 3seed

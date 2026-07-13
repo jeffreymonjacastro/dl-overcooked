@@ -1,14 +1,14 @@
 seed: 67
 mode: collect_demonstrations
 environment:
-  layout_name: maze_kitchen
+  layout_name: cramped_room
   layout_file: null
   horizon: 250
   old_dynamics: true
 policies:
   agent_0:
     type: builtin
-    name: random_motion
+    name: greedy_full_task
     ingredient: onion
     avoid_teammate: true
     random_action_prob: 0.0

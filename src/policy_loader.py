@@ -10,13 +10,11 @@ from typing import Any
 
 from overcooked_ai_py.agents.agent import GreedyHumanModel, RandomAgent, StayAgent
 
-from policies.adaptive_competition_policy import AdaptiveCompetitionPolicy
-from policies.basic_policies import GreedyFullTaskPolicy, HybridOfficialScorePolicy, RandomMotionPolicy, RecipeAwareGreedyPolicy, StayPolicy
+from policies.basic_policies import GreedyFullTaskPolicy, RandomMotionPolicy, StayPolicy
 from policies.human_keyboard_policy import HumanKeyboardPolicy
-from policies.score_first_portfolio_policy import ScoreFirstPortfolioPolicy
-from policies.shortppo_policy import AdaptiveCompetitionShortPPOPolicy
 
 from src.observations import ObservationBuilder
+from src.config import load_yaml
 from src.policy_wrappers import StudentAgentAdapter, wrap_agent
 
 
@@ -41,7 +39,12 @@ def import_class_from_file(path: str | Path, class_name: str):
         raise PolicyLoadError(f"Class '{class_name}' not found in {path}") from exc
 
 
-def build_builtin_agent(name: str, env, policy_config: dict[str, Any] | None = None):
+def build_builtin_agent(
+    name: str,
+    env,
+    policy_config: dict[str, Any] | None = None,
+    seed: int | None = None,
+):
     policy_config = policy_config or {}
     key = str(name).strip().lower()
 
@@ -49,51 +52,12 @@ def build_builtin_agent(name: str, env, policy_config: dict[str, Any] | None = N
     if key == "stay":
         return StayPolicy()
     if key == "random_motion":
-        return RandomMotionPolicy(seed=policy_config.get("seed"))
+        return RandomMotionPolicy(seed=policy_config.get("seed", seed))
     if key == "greedy_full_task":
         return GreedyFullTaskPolicy(
             ingredient=policy_config.get("ingredient", "onion"),
             avoid_teammate=policy_config.get("avoid_teammate", True),
-            seed=policy_config.get("seed"),
-        )
-    if key == "recipe_aware_greedy":
-        return RecipeAwareGreedyPolicy(
-            avoid_teammate=policy_config.get("avoid_teammate", True),
-            seed=policy_config.get("seed"),
-        )
-    if key == "hybrid_official_score":
-        context = policy_config.get("config", {}) or {}
-        return HybridOfficialScorePolicy(
-            env.mlam,
-            layout_name=context.get("layout_name", policy_config.get("layout_name")),
-            partner_name=context.get("partner_name", policy_config.get("partner_name")),
-            seed=policy_config.get("seed"),
-        )
-    if key == "adaptive_competition":
-        context = policy_config.get("config", {}) or {}
-        return AdaptiveCompetitionPolicy(
-            env.mlam,
-            layout_name=context.get("layout_name", policy_config.get("layout_name")),
-            partner_name=context.get("partner_name", policy_config.get("partner_name")),
-            seed=policy_config.get("seed"),
-        )
-    if key == "adaptive_competition_shortppo":
-        context = policy_config.get("config", {}) or {}
-        return AdaptiveCompetitionShortPPOPolicy(
-            env.mlam,
-            layout_name=context.get("layout_name", policy_config.get("layout_name")),
-            partner_name=context.get("partner_name", policy_config.get("partner_name")),
-            seed=policy_config.get("seed"),
-            params_path=context.get("params_path", policy_config.get("params_path")),
-            params=context.get("params", policy_config.get("params")),
-        )
-    if key == "score_first_portfolio":
-        context = policy_config.get("config", {}) or {}
-        return ScoreFirstPortfolioPolicy(
-            env.mlam,
-            layout_name=context.get("layout_name", policy_config.get("layout_name")),
-            partner_name=context.get("partner_name", policy_config.get("partner_name")),
-            seed=policy_config.get("seed"),
+            seed=policy_config.get("seed", seed),
         )
     if key == "human_keyboard":
         return HumanKeyboardPolicy(
@@ -109,10 +73,34 @@ def build_builtin_agent(name: str, env, policy_config: dict[str, Any] | None = N
 
     raise PolicyLoadError(
         f"Unknown builtin policy '{name}'. Valid builtins: "
-        "stay, random_motion, random, greedy_full_task, recipe_aware_greedy, hybrid_official_score, "
-        "adaptive_competition, adaptive_competition_shortppo, score_first_portfolio, "
-        "human_keyboard, greedy_human_model"
+        "stay, random_motion, random, greedy_full_task, human_keyboard, greedy_human_model"
     )
+
+
+def build_student_config(policy_config: dict[str, Any], seed: int | None = None) -> dict[str, Any]:
+    """Resolve config_path, inline config and model_path for StudentAgent.
+
+    Inline ``config`` values override values loaded from ``config_path``.
+    Runtime path metadata is injected last so an agent can reliably locate its
+    own artifacts.
+    """
+    student_config: dict[str, Any] = {}
+    config_path = policy_config.get("config_path")
+    if config_path:
+        student_config.update(load_yaml(config_path))
+
+    inline_config = policy_config.get("config", {}) or {}
+    if not isinstance(inline_config, dict):
+        raise PolicyLoadError("python_class field 'config' must be a mapping")
+    student_config.update(inline_config)
+
+    if config_path:
+        student_config["config_path"] = str(config_path)
+    if policy_config.get("model_path"):
+        student_config["model_path"] = str(policy_config["model_path"])
+    if seed is not None:
+        student_config.setdefault("seed", int(seed))
+    return student_config
 
 
 def build_policy(policy_config: dict[str, Any], env, obs_builder: ObservationBuilder, seed: int | None = None):
@@ -123,13 +111,13 @@ def build_policy(policy_config: dict[str, Any], env, obs_builder: ObservationBui
     if policy_type == "builtin":
         if "name" not in policy_config:
             raise PolicyLoadError("Builtin policy requires field 'name'")
-        base_agent = build_builtin_agent(policy_config["name"], env, policy_config=policy_config)
+        base_agent = build_builtin_agent(policy_config["name"], env, policy_config=policy_config, seed=seed)
     elif policy_type == "python_class":
         if "path" not in policy_config:
             raise PolicyLoadError("python_class policy requires field 'path'")
         class_name = policy_config.get("class_name", "StudentAgent")
         cls = import_class_from_file(policy_config["path"], class_name)
-        student_config = policy_config.get("config", {}) or {}
+        student_config = build_student_config(policy_config, seed=seed)
         student_agent = cls(student_config)
         base_agent = StudentAgentAdapter(student_agent, obs_builder, name=name)
     else:

@@ -1,7 +1,0 @@
-.venv/
-.pip-cache/
-__pycache__/
-*.py[cod]
-outputs/
-artifacts/option_a/teacher_rollouts/
-*.tmp
